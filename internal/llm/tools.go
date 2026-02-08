@@ -69,7 +69,7 @@ var AgentTools = []Tool{
 	{
 		Name:        "get_summary",
 		Description: "Get a summary of active projects, pending todos, overdue items, and recent activity.",
-		Parameters: obj(nil),
+		Parameters:  obj(nil),
 	},
 	{
 		Name:        "list_ideas",
@@ -134,6 +134,11 @@ var AgentTools = []Tool{
 			"key":   prop("string", "Note key"),
 			"value": prop("string", "Note value"),
 		}, "key", "value"),
+	},
+	{
+		Name:        "get_time",
+		Description: "Get the current system time. Use this when doing things like setting up cron jobs for check-ins and reminders.",
+		Parameters:  obj(nil),
 	},
 }
 

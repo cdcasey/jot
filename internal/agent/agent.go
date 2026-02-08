@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/chris/jot/internal/db"
 	"github.com/chris/jot/internal/llm"
@@ -236,6 +237,14 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		category, _ := getString(params, "category")
 		limit, _ := getInt(params, "limit")
 		result, err = a.db.ListRecentMemories(category, int(limit))
+
+	case "get_time":
+		now := time.Now()
+		formattedLocal := now.Format(time.RFC3339)
+		formattedUTC := now.UTC().Format(time.RFC3339)
+		date := now.Format("2006-01-02")
+		weekday := now.Weekday().String()
+		result = map[string]any{"local": formattedLocal, "utc": formattedUTC, "date": date, "day": weekday}
 
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}
