@@ -257,6 +257,7 @@ go build -o agent ./cmd/agent
 - [ ] Better context window management
 - [ ] Conversation history (how many messages to include)
 - [ ] Markdown export command for human review
+- [ ] Start on startup or login
 
 ## Code Style
 
