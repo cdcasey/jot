@@ -52,3 +52,13 @@ CREATE TABLE IF NOT EXISTS memories (
     expires_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS skills (
+	id INTEGER PRIMARY KEY,
+	name TEXT UNIQUE NOT NULL,
+	description TEXT NOT NULL,
+	content TEXT NOT NULL,
+	tags TEXT,
+ 	created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+)
