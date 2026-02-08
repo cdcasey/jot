@@ -237,23 +237,23 @@ go build -o agent ./cmd/agent
 ## Development Phases
 
 ### Phase 1: Core (MVP)
-- [ ] SQLite schema and migrations
-- [ ] Database query functions
-- [ ] Anthropic client with tool calling
-- [ ] Core tools (6 tools listed above)
-- [ ] CLI mode for testing: `echo "add a todo to buy milk" | ./agent`
+- [x] SQLite schema and migrations
+- [x] Database query functions
+- [x] Anthropic client with tool calling
+- [x] Core tools (6 tools listed above)
+- [x] CLI mode for testing: `echo "add a todo to buy milk" | ./agent`
 
 ### Phase 2: Discord
-- [ ] Discord bot setup (listen for DMs)
-- [ ] Message handling (pipe through agent)
-- [ ] Webhook for outbound messages
+- [x] Discord bot setup (listen for DMs)
+- [x] Message handling (pipe through agent)
+- [x] Webhook for outbound messages
 
 ### Phase 3: Scheduling
-- [ ] Internal cron scheduler
-- [ ] Check-in logic (build context, send to LLM, post to Discord)
+- [x] Internal cron scheduler
+- [x] Check-in logic (build context, send to LLM, post to Discord)
 
 ### Phase 4: Polish
-- [ ] Remaining tools (ideas, notes)
+- [x] Remaining tools (ideas, notes)
 - [ ] Better context window management
 - [ ] Conversation history (how many messages to include)
 - [ ] Markdown export command for human review

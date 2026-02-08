@@ -1,16 +1,15 @@
 {
-  "permissions": {
-    "allow": [
-      "mcp__plugin_context7_context7__resolve-library-id",
-      "mcp__plugin_context7_context7__query-docs",
-      "WebSearch",
-      "Bash(go mod init:*)",
-      "Bash(go get:*)",
-      "Bash(go build:*)",
-      "Bash(go vet:*)",
-      "Bash(LLM_PROVIDER=anthropic DATABASE_PATH=/private/tmp/claude-501/-Users-chris-dev-jot/f7424199-0adb-4a0e-84b4-105056d73483/scratchpad/test.db go run:*)",
-      "Bash(sqlite3:*)",
-      "Bash(go test:*)"
-    ]
-  }
+	"permissions": {
+		"allow": [
+			"mcp__plugin_context7_context7__resolve-library-id",
+			"mcp__plugin_context7_context7__query-docs",
+			"WebSearch",
+			"Bash(go mod init:*)",
+			"Bash(go get:*)",
+			"Bash(go build:*)",
+			"Bash(go vet:*)",
+			"Bash(sqlite3:*)",
+			"Bash(go test:*)"
+		]
+	}
 }
