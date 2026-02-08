@@ -245,7 +245,7 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		result = map[string]any{"error": err.Error()}
 	}
 
-	b, _ := json.Marshal(result)
+	b, _ := json.Marshal(result) // result is always a simple map or slice; marshal cannot fail
 	return string(b)
 }
 

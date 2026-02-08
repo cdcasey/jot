@@ -3,6 +3,7 @@ package agent
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/chris/jot/internal/db"
@@ -11,20 +12,25 @@ import (
 // BuildCheckInPrompt creates a prompt for the scheduled check-in.
 func BuildCheckInPrompt(database *db.DB) (string, error) {
 	// Prune expired memories
-	database.PruneExpiredMemories()
+	if _, err := database.PruneExpiredMemories(); err != nil {
+		log.Printf("warning: pruning memories: %v", err)
+	}
 
 	summary, err := database.GetSummary()
 	if err != nil {
 		return "", fmt.Errorf("building check-in context: %w", err)
 	}
-	summaryJSON, _ := json.MarshalIndent(summary, "", "  ")
+	summaryJSON, _ := json.MarshalIndent(summary, "", "  ") // Summary struct marshal cannot fail
 
 	var b strings.Builder
 	b.WriteString("It's time for a check-in.\n\n## Summary\n")
 	b.Write(summaryJSON)
 
 	// Last check-in for continuity
-	lastSummary, lastDate, _ := database.GetLastCheckIn()
+	lastSummary, lastDate, err := database.GetLastCheckIn()
+	if err != nil {
+		log.Printf("warning: getting last check-in: %v", err)
+	}
 	b.WriteString("\n\n## Last Check-In\n")
 	if lastSummary != "" {
 		fmt.Fprintf(&b, "(%s): %s", lastDate, lastSummary)
@@ -33,7 +39,10 @@ func BuildCheckInPrompt(database *db.DB) (string, error) {
 	}
 
 	// Recent memories for context
-	memories, _ := database.GetRecentMemoriesForCheckIn(7)
+	memories, err := database.GetRecentMemoriesForCheckIn(7)
+	if err != nil {
+		log.Printf("warning: getting recent memories: %v", err)
+	}
 	if len(memories) > 0 {
 		b.WriteString("\n\n## Recent Memories (last 7 days)\n")
 		for _, m := range memories {

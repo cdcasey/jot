@@ -9,7 +9,8 @@
       "Bash(go build:*)",
       "Bash(go vet:*)",
       "Bash(LLM_PROVIDER=anthropic DATABASE_PATH=/private/tmp/claude-501/-Users-chris-dev-jot/f7424199-0adb-4a0e-84b4-105056d73483/scratchpad/test.db go run:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(go test:*)"
     ]
   }
 }

@@ -63,7 +63,16 @@ Set both `DISCORD_WEBHOOK_URL` and `CHECK_IN_CRON` in `.env`. The bot will post 
 - **Projects** — create, list, update status (active/paused/completed/archived)
 - **Ideas** — capture with tags, list and filter
 - **Notes** — key-value scratchpad for persistent memory
+- **Memories** — contextual memory with categories, tags, and optional expiry
 - **Summaries** — overview of active projects, pending/overdue todos
+
+## Testing
+
+```bash
+go test ./...
+```
+
+Tests cover the database layer: CRUD operations, filtering, memory expiry/pruning, and input validation.
 
 ## Data
 

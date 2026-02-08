@@ -189,7 +189,7 @@ func (d *DB) ListIdeas(projectID *int64, tag string) ([]Idea, error) {
 		if err := rows.Scan(&i.ID, &i.ProjectID, &i.Title, &i.Content, &tagsJSON, &i.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning idea: %w", err)
 		}
-		_ = json.Unmarshal([]byte(tagsJSON), &i.Tags)
+		_ = json.Unmarshal([]byte(tagsJSON), &i.Tags) // malformed tags default to empty; not worth failing the query
 		ideas = append(ideas, i)
 	}
 	return ideas, rows.Err()
@@ -199,7 +199,7 @@ func (d *DB) ListIdeas(projectID *int64, tag string) ([]Idea, error) {
 func (d *DB) CreateIdea(title, content string, projectID *int64, tags []string) (int64, error) {
 	var tagsJSON string
 	if len(tags) > 0 {
-		b, _ := json.Marshal(tags)
+		b, _ := json.Marshal(tags) // []string marshal cannot fail
 		tagsJSON = string(b)
 	}
 	res, err := d.conn.Exec(
@@ -241,8 +241,12 @@ func (d *DB) SetNote(key, value string) error {
 func (d *DB) GetSummary() (*Summary, error) {
 	s := &Summary{}
 
-	d.conn.QueryRow("SELECT COUNT(*) FROM projects WHERE status = 'active'").Scan(&s.ActiveProjects)
-	d.conn.QueryRow("SELECT COUNT(*) FROM todos WHERE status IN ('pending','in_progress')").Scan(&s.PendingTodos)
+	if err := d.conn.QueryRow("SELECT COUNT(*) FROM projects WHERE status = 'active'").Scan(&s.ActiveProjects); err != nil {
+		return nil, fmt.Errorf("counting active projects: %w", err)
+	}
+	if err := d.conn.QueryRow("SELECT COUNT(*) FROM todos WHERE status IN ('pending','in_progress')").Scan(&s.PendingTodos); err != nil {
+		return nil, fmt.Errorf("counting pending todos: %w", err)
+	}
 
 	// Overdue todos
 	now := time.Now().UTC().Format("2006-01-02")
@@ -256,7 +260,9 @@ func (d *DB) GetSummary() (*Summary, error) {
 	defer rows.Close()
 	for rows.Next() {
 		var t Todo
-		rows.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt)
+		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt); err != nil {
+			return nil, fmt.Errorf("scanning overdue todo: %w", err)
+		}
 		s.OverdueTodos = append(s.OverdueTodos, t)
 	}
 
@@ -270,7 +276,9 @@ func (d *DB) GetSummary() (*Summary, error) {
 	defer rows2.Close()
 	for rows2.Next() {
 		var t Todo
-		rows2.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt)
+		if err := rows2.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt); err != nil {
+			return nil, fmt.Errorf("scanning recent todo: %w", err)
+		}
 		s.RecentTodos = append(s.RecentTodos, t)
 	}
 
@@ -290,7 +298,7 @@ func (d *DB) CreateCheckIn(summary string) (int64, error) {
 func (d *DB) SaveMemory(content, category, source string, tags []string, projectID *int64, expiresAt string) (int64, error) {
 	var tagsJSON string
 	if len(tags) > 0 {
-		b, _ := json.Marshal(tags)
+		b, _ := json.Marshal(tags) // []string marshal cannot fail
 		tagsJSON = string(b)
 	}
 	res, err := d.conn.Exec(
@@ -399,10 +407,15 @@ func (d *DB) scanMemories(query string, args ...any) ([]Memory, error) {
 		if err := rows.Scan(&m.ID, &m.Content, &m.Category, &tagsJSON, &m.ProjectID, &m.Source, &m.ExpiresAt, &m.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning memory: %w", err)
 		}
-		_ = json.Unmarshal([]byte(tagsJSON), &m.Tags)
+		_ = json.Unmarshal([]byte(tagsJSON), &m.Tags) // malformed tags default to empty; not worth failing the query
 		memories = append(memories, m)
 	}
 	return memories, rows.Err()
+}
+
+var allowedColumns = map[string]map[string]bool{
+	"todos":    {"title": true, "notes": true, "status": true, "priority": true, "due_date": true, "project_id": true, "completed_at": true},
+	"projects": {"name": true, "description": true, "status": true},
 }
 
 // updateRow is a generic helper for updating a row's fields.
@@ -410,9 +423,16 @@ func (d *DB) updateRow(table string, id int64, fields map[string]any) error {
 	if len(fields) == 0 {
 		return nil
 	}
+	allowed, ok := allowedColumns[table]
+	if !ok {
+		return fmt.Errorf("unknown table: %s", table)
+	}
 	var setClauses []string
 	var args []any
 	for col, val := range fields {
+		if !allowed[col] {
+			return fmt.Errorf("disallowed column %q for table %s", col, table)
+		}
 		setClauses = append(setClauses, col+" = ?")
 		args = append(args, val)
 	}
