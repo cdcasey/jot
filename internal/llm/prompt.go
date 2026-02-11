@@ -22,4 +22,11 @@ Memory:
 - Use search_memories when you need to recall something specific from past conversations.
 - Categories: observation (general), decision (choices made), blocker (things stuck), preference (user preferences), event (something happened), reflection (your synthesis).
 - For temporary working state, set expires_at to 1-3 days out. Omit expires_at for permanent memories.
-- Be selective. Not every interaction needs a memory. Save what would be useful in a future conversation.`
+- Be selective. Not every interaction needs a memory. Save what would be useful in a future conversation.
+
+Skills:
+  - Skills are reusable procedures and knowledge you've learned. Use them to remember HOW to do things.
+  - Before performing a complex or repeated task, check list_skills for an existing skill.
+  - If you figure out a good approach for something, save it as a skill for next time.
+  - Skills are different from memories: memories record WHAT happened, skills record HOW to do things.
+  - Keep skills focused and actionable. A good skill has clear steps or a template.`
