@@ -60,5 +60,5 @@ CREATE TABLE IF NOT EXISTS skills (
 	content TEXT NOT NULL,
 	tags TEXT,
  	created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now')),
-)
+  updated_at TEXT DEFAULT (datetime('now'))
+);
