@@ -140,6 +140,47 @@ var AgentTools = []Tool{
 		Description: "Get the current system time. Use this when doing things like setting up cron jobs for check-ins and reminders.",
 		Parameters:  obj(nil),
 	},
+	{
+		Name:        "create_skill",
+		Description: "Create a new skill.",
+		Parameters: objReq(map[string]any{
+			"name":        prop("string", "Skill title"),
+			"description": prop("string", "Skill description"),
+			"content":     prop("string", "Skill content"),
+			"tags":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Tags for the skill"},
+		}, "name", "description", "content"),
+	},
+	{
+		Name:        "get_skill",
+		Description: "Retrieve a skill by name.",
+		Parameters: objReq(map[string]any{
+			"name": prop("string", "Skill name"),
+		}, "name"),
+	},
+	{
+		Name:        "list_skills",
+		Description: "List all skills, optionally filtered by tag.",
+		Parameters: obj(map[string]any{
+			"tag": prop("string", "Filter by tag"),
+		}),
+	},
+	{
+		Name:        "update_skill",
+		Description: "Update a skill by name. Can change description, content, or tags.",
+		Parameters: objReq(map[string]any{
+			"name":        prop("string", "Skill name"),
+			"description": prop("string", "New description"),
+			"content":     prop("string", "New content"),
+			"tags":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "New tags"},
+		}, "name"),
+	},
+	{
+		Name:        "delete_skill",
+		Description: "Delete a skill by name.",
+		Parameters: objReq(map[string]any{
+			"name": prop("string", "Skill name"),
+		}, "name"),
+	},
 }
 
 // Helper functions for building JSON Schema objects.
