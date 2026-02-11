@@ -246,6 +246,62 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		weekday := now.Weekday().String()
 		result = map[string]any{"local": formattedLocal, "utc": formattedUTC, "date": date, "day": weekday}
 
+	case "create_skill":
+		name, _ := getString(params, "name")
+		description, _ := getString(params, "description")
+		content, _ := getString(params, "content")
+		var tags []string
+		if v, ok := params["tags"]; ok {
+			if arr, ok := v.([]any); ok {
+				for _, t := range arr {
+					if s, ok := t.(string); ok {
+						tags = append(tags, s)
+					}
+				}
+			}
+		}
+		id, e := a.db.CreateSkill(name, description, content, tags)
+		if e != nil {
+			err = e
+		} else {
+			result = map[string]any{"id": id, "status": "created"}
+		}
+
+	case "get_skill":
+		name, _ := getString(params, "name")
+		skill, e := a.db.GetSkill(name)
+		if e != nil {
+			err = e
+		} else if skill == nil {
+			result = map[string]any{"error": "skill not found", "name": name}
+		} else {
+			result = skill
+		}
+
+	case "list_skills":
+		tag, _ := getString(params, "tag")
+		result, err = a.db.ListSkills(tag)
+
+	case "update_skill":
+		name, _ := getString(params, "name")
+		fields := make(map[string]any)
+		for _, k := range []string{"description", "content", "tags"} {
+			if v, ok := params[k]; ok {
+				fields[k] = v
+			}
+		}
+		err = a.db.UpdateSkill(name, fields)
+		if err == nil {
+			result = map[string]any{"status": "updated"}
+		}
+
+	case "delete_skill":
+		name, _ := getString(params, "name")
+		err = a.db.DeleteSkill(name)
+		if err == nil {
+			result = map[string]any{"status": "deleted"}
+		}
+
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}
 	}

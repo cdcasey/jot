@@ -526,3 +526,148 @@ func TestListRecentMemoriesFilterByCategory(t *testing.T) {
 		t.Errorf("expected category %q, got %q", "blocker", memories[0].Category)
 	}
 }
+
+// --- Skills ---
+
+func TestCreateAndListSkills(t *testing.T) {
+	d := openTestDB(t)
+
+	id, err := d.CreateSkill("cool skill", "skill description", "some fancy skill contents", []string{"go", "ai"})
+	if err != nil {
+		t.Fatalf("CreateSkill: %v", err)
+	}
+
+	skills, err := d.ListSkills("go")
+	if err != nil {
+		t.Fatalf("ListSkills: %v", err)
+	}
+	if len(skills) != 1 {
+		t.Fatalf("expected 1 idea, got %d", len(skills))
+	}
+	if skills[0].ID != id {
+		t.Errorf("expected ID %d, got %d", id, skills[0].ID)
+	}
+	if skills[0].Name != "cool skill" {
+		t.Errorf("expected title %q, got %q", "cool idea", skills[0].Name)
+	}
+	if len(skills[0].Tags) != 2 || skills[0].Tags[0] != "go" || skills[0].Tags[1] != "ai" {
+		t.Errorf("expected tags [go, ai], got %v", skills[0].Tags)
+	}
+}
+
+func TestGetSkillByName(t *testing.T) {
+	d := openTestDB(t)
+
+	d.CreateSkill("my-skill", "a description", "skill content", nil)
+
+	// Found
+	skill, err := d.GetSkill("my-skill")
+	if err != nil {
+		t.Fatalf("GetSkill: %v", err)
+	}
+	if skill == nil {
+		t.Fatal("expected skill, got nil")
+	}
+	if skill.Name != "my-skill" {
+		t.Errorf("expected name %q, got %q", "my-skill", skill.Name)
+	}
+	if skill.Description != "a description" {
+		t.Errorf("expected description %q, got %q", "a description", skill.Description)
+	}
+	if skill.Content != "skill content" {
+		t.Errorf("expected content %q, got %q", "skill content", skill.Content)
+	}
+
+	// Not found
+	skill, err = d.GetSkill("nonexistent")
+	if err != nil {
+		t.Fatalf("GetSkill(nonexistent): %v", err)
+	}
+	if skill != nil {
+		t.Errorf("expected nil for nonexistent skill, got %+v", skill)
+	}
+}
+
+func TestListSkillsFilterByTag(t *testing.T) {
+	d := openTestDB(t)
+
+	d.CreateSkill("skill-1", "desc", "content", []string{"go", "cli"})
+	d.CreateSkill("skill-2", "desc", "content", []string{"python"})
+	d.CreateSkill("skill-3", "desc", "content", nil)
+
+	skills, err := d.ListSkills("go")
+	if err != nil {
+		t.Fatalf("ListSkills(go): %v", err)
+	}
+	if len(skills) != 1 {
+		t.Fatalf("expected 1 skill with tag 'go', got %d", len(skills))
+	}
+	if skills[0].Name != "skill-1" {
+		t.Errorf("expected %q, got %q", "skill-1", skills[0].Name)
+	}
+
+	// No filter returns all
+	skills, err = d.ListSkills("")
+	if err != nil {
+		t.Fatalf("ListSkills(all): %v", err)
+	}
+	if len(skills) != 3 {
+		t.Errorf("expected 3 skills, got %d", len(skills))
+	}
+}
+
+func TestUpdateSkill(t *testing.T) {
+	d := openTestDB(t)
+
+	d.CreateSkill("updatable", "original desc", "original content", []string{"tag1"})
+
+	err := d.UpdateSkill("updatable", map[string]any{"description": "new desc"})
+	if err != nil {
+		t.Fatalf("UpdateSkill: %v", err)
+	}
+
+	skill, _ := d.GetSkill("updatable")
+	if skill.Description != "new desc" {
+		t.Errorf("expected description %q, got %q", "new desc", skill.Description)
+	}
+	// Content should be unchanged
+	if skill.Content != "original content" {
+		t.Errorf("content changed unexpectedly: got %q", skill.Content)
+	}
+}
+
+func TestDeleteSkill(t *testing.T) {
+	d := openTestDB(t)
+
+	d.CreateSkill("to-delete", "desc", "content", nil)
+
+	err := d.DeleteSkill("to-delete")
+	if err != nil {
+		t.Fatalf("DeleteSkill: %v", err)
+	}
+
+	skill, _ := d.GetSkill("to-delete")
+	if skill != nil {
+		t.Errorf("expected skill to be deleted, but found %+v", skill)
+	}
+
+	// Deleting nonexistent should error
+	err = d.DeleteSkill("nonexistent")
+	if err == nil {
+		t.Error("expected error deleting nonexistent skill, got nil")
+	}
+}
+
+func TestCreateSkillDuplicateName(t *testing.T) {
+	d := openTestDB(t)
+
+	_, err := d.CreateSkill("unique-name", "desc", "content", nil)
+	if err != nil {
+		t.Fatalf("first CreateSkill: %v", err)
+	}
+
+	_, err = d.CreateSkill("unique-name", "other desc", "other content", nil)
+	if err == nil {
+		t.Error("expected error creating duplicate skill name, got nil")
+	}
+}
