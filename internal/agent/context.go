@@ -50,6 +50,18 @@ func BuildCheckInPrompt(database *db.DB) (string, error) {
 		}
 	}
 
+	// Skills tagged for check-ins
+	skills, err := database.ListSkills("check-in")
+	if err != nil {
+		log.Printf("warning: loading check-in skill: %v", err)
+	}
+	if len(skills) > 0 {
+		b.WriteString("\n\n## Available Skills\n")
+		for _, s := range skills {
+			fmt.Fprintf(&b, "**%s**: %s\n%s\n\n", s.Name, s.Description, s.Content)
+		}
+	}
+
 	b.WriteString("\n\nBased on the above, provide a brief check-in. Reference specific memories and past context where relevant. If there are blockers from previous conversations, ask if they're resolved. Mention overdue items. Suggest priorities. Keep it concise and useful.")
 
 	return b.String(), nil
