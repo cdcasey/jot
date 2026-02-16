@@ -44,6 +44,9 @@ func main() {
 	}
 
 	ag := agent.New(database, client)
+	if cfg.MaxContextTokens > 0 {
+		ag.SetMaxContextTokens(cfg.MaxContextTokens)
+	}
 
 	// If Discord token is set, run as bot
 	if cfg.DiscordToken != "" {

@@ -10,6 +10,12 @@ import (
 	"github.com/chris/jot/internal/llm"
 )
 
+// maxStoredTokens limits how much history we keep in memory per channel.
+// This is a safety cap for RAM — the agent does its own precise trimming
+// before each API call. We keep it generous so the agent has context to
+// work with, but bounded so a long-running bot doesn't eat memory.
+const maxStoredTokens = 100000
+
 // Per-channel conversation history.
 var (
 	histories   = make(map[string][]llm.Message)
@@ -56,6 +62,11 @@ func (b *Bot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(m.ChannelID, "Something went wrong. Try again?")
 		return
 	}
+
+	// Cap stored history to prevent unbounded memory growth.
+	// Use a generous budget — this just prevents the map from growing forever.
+	// The agent also trims before each API call for precise context management.
+	newHistory = llm.TrimMessages(newHistory, maxStoredTokens)
 
 	historiesMu.Lock()
 	histories[m.ChannelID] = newHistory
