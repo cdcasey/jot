@@ -57,6 +57,11 @@ func (b *Bot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	// Cap stored history using the same budget as the agent's context window.
+	// This prevents unbounded memory growth while keeping as much useful
+	// history as the model can actually use.
+	newHistory = llm.TrimMessages(newHistory, b.agent.MaxContextTokens)
+
 	historiesMu.Lock()
 	histories[m.ChannelID] = newHistory
 	historiesMu.Unlock()

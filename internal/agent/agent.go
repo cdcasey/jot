@@ -14,12 +14,13 @@ import (
 const maxToolRounds = 10
 
 type Agent struct {
-	db     *db.DB
-	client llm.Client
+	db               *db.DB
+	client           llm.Client
+	MaxContextTokens int
 }
 
-func New(database *db.DB, client llm.Client) *Agent {
-	return &Agent{db: database, client: client}
+func New(database *db.DB, client llm.Client, maxContextTokens int) *Agent {
+	return &Agent{db: database, client: client, MaxContextTokens: maxContextTokens}
 }
 
 // Run takes a user message, runs the tool-calling loop, and returns the final text response.
@@ -28,8 +29,19 @@ func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage stri
 	copy(messages, history)
 	messages = append(messages, llm.Message{Role: "user", Content: userMessage})
 
+	// Fixed costs: system prompt + tool definitions.
+	fixedTokens := llm.EstimateTokens(llm.SystemPrompt) + llm.EstimateToolsTokens(llm.AgentTools)
+	messageBudget := a.MaxContextTokens - fixedTokens
+	if messageBudget < 1000 {
+		messageBudget = 1000 // floor so we always have room for at least the current turn
+	}
+
 	for i := 0; i < maxToolRounds; i++ {
-		resp, err := a.client.Chat(ctx, llm.SystemPrompt, messages, llm.AgentTools)
+		trimmed := llm.TrimMessages(messages, messageBudget)
+		if len(trimmed) < len(messages) {
+			log.Printf("context trimmed: %d → %d messages", len(messages), len(trimmed))
+		}
+		resp, err := a.client.Chat(ctx, llm.SystemPrompt, trimmed, llm.AgentTools)
 		if err != nil {
 			return "", nil, fmt.Errorf("llm chat: %w", err)
 		}

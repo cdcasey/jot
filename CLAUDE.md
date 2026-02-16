@@ -143,6 +143,7 @@ DISCORD_BOT_TOKEN=...
 DISCORD_WEBHOOK_URL=...        # For outbound notifications
 DATABASE_PATH=./data.db        # SQLite file location
 CHECK_IN_CRON="0 9 * * *"      # Daily at 9am (optional)
+MAX_CONTEXT_TOKENS=180000      # Token budget for LLM context (default: 180000)
 ```
 
 ## Multi-Provider LLM Support
@@ -254,8 +255,8 @@ go build -o agent ./cmd/agent
 
 ### Phase 4: Polish
 - [x] Remaining tools (ideas, notes)
-- [ ] Better context window management
-- [ ] Conversation history (how many messages to include)
+- [x] Better context window management
+- [x] Conversation history (how many messages to include)
 - [ ] Markdown export command for human review
 - [ ] Start on startup or login
 

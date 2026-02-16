@@ -43,7 +43,7 @@ func main() {
 		log.Fatalf("failed to create LLM client: %v", err)
 	}
 
-	ag := agent.New(database, client)
+	ag := agent.New(database, client, cfg.MaxContextTokens)
 
 	// If Discord token is set, run as bot
 	if cfg.DiscordToken != "" {
