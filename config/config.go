@@ -35,7 +35,7 @@ func Load() *Config {
 		DiscordWebhook:   os.Getenv("DISCORD_WEBHOOK_URL"),
 		DatabasePath:     envOr("DATABASE_PATH", "./data.db"),
 		CheckInCron:      envOr("CHECK_IN_CRON", "0 9 * * *"),
-		MaxContextTokens: envInt("MAX_CONTEXT_TOKENS", 0),
+		MaxContextTokens: envInt("MAX_CONTEXT_TOKENS", 180000),
 	}
 }
 
