@@ -1,6 +1,6 @@
 # Personal Assistant Agent
 
-A sandboxed personal assistant for tracking todos, ideas, and projects. Interacts via Discord, stores data in SQLite, uses Claude for natural language understanding.
+A sandboxed personal assistant for tracking open loops — anything on your mind. Interacts via Discord, stores data in SQLite, uses Claude for natural language understanding.
 
 ## Project Overview
 
@@ -56,35 +56,17 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
 ## Database Schema
 
 ```sql
-CREATE TABLE projects (
+CREATE TABLE things (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    status TEXT DEFAULT 'active',  -- active, paused, completed, archived
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE todos (
-    id INTEGER PRIMARY KEY,
-    project_id INTEGER REFERENCES projects(id),
     title TEXT NOT NULL,
     notes TEXT,
-    status TEXT DEFAULT 'pending',  -- pending, in_progress, done, cancelled
-    priority TEXT DEFAULT 'normal', -- low, normal, high, urgent
+    status TEXT DEFAULT 'open',       -- open, active, done, dropped
+    priority TEXT DEFAULT 'normal',   -- low, normal, high, urgent
+    tags TEXT,                         -- JSON array: ["tag1", "tag2"]
     due_date TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     completed_at TEXT
-);
-
-CREATE TABLE ideas (
-    id INTEGER PRIMARY KEY,
-    project_id INTEGER REFERENCES projects(id),
-    title TEXT NOT NULL,
-    content TEXT,
-    tags TEXT,  -- JSON array: ["tag1", "tag2"]
-    created_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE check_ins (
@@ -105,29 +87,32 @@ CREATE TABLE notes (
 
 The agent has exactly these tools - no more, no less:
 
-### Core Tools (Phase 1)
-- `list_todos` - List todos, optionally filtered by project_id, status, priority
-- `create_todo` - Create a new todo (title required; project_id, notes, priority, due_date optional)
-- `update_todo` - Update a todo by id (any field except id and created_at)
-- `complete_todo` - Mark a todo as done (shorthand for update_todo with status=done)
-- `list_projects` - List all projects, optionally filtered by status
-- `create_project` - Create a new project (name required, description optional)
-- `get_summary` - Returns active projects count, pending todos count, overdue todos, recent activity
+### Thing Tools
+- `list_things` - List things, optionally filtered by status, priority, tag
+- `create_thing` - Create a new thing (title required; notes, priority, due_date, tags optional)
+- `update_thing` - Update a thing by id (any field except id and created_at)
+- `complete_thing` - Mark a thing as done
+- `get_summary` - Returns open things count, overdue things, recent activity
 
-### Extended Tools (Phase 2)
-- `update_project` - Update project details or status
-- `list_ideas` - List ideas, optionally filtered by project_id or tags
-- `create_idea` - Capture a new idea
+### Notes & Memory Tools
 - `get_note` - Retrieve a stored note by key
 - `set_note` - Store or update a note (agent's scratchpad memory)
+- `save_memory` - Save a timestamped memory (events, decisions, blockers)
+- `search_memories` - Search past memories by text, category, tag, thing, or date
+- `list_recent_memories` - List most recent memories
+
+### Utility Tools
+- `get_time` - Get the current system time
+- `create_skill` / `get_skill` / `list_skills` / `update_skill` / `delete_skill` - Manage reusable skills
 
 ## System Prompt Guidelines
 
 The agent should:
 - Be helpful but concise - no unnecessary chatter
-- Proactively use tools to check state before answering questions about todos/projects
-- Remember context across the conversation using the notes table for persistent memory
-- During check-ins: summarize what's pending, gently nudge about overdue items, ask about priorities
+- Proactively use tools to check state before answering questions about things
+- Everything is a "thing" — use tags for categorization, status and priority for state
+- Remember context across conversations using notes and memories
+- During check-ins: summarize open things, mention overdue items, ask about priorities
 - Not be annoying - check-ins should be useful, not nagging
 - Admit when it doesn't know something rather than making things up
 
@@ -241,8 +226,8 @@ go build -o agent ./cmd/agent
 - [x] SQLite schema and migrations
 - [x] Database query functions
 - [x] Anthropic client with tool calling
-- [x] Core tools (6 tools listed above)
-- [x] CLI mode for testing: `echo "add a todo to buy milk" | ./agent`
+- [x] Core tools (5 thing tools + notes + memory + skills + time)
+- [x] CLI mode for testing: `echo "track a thing: buy milk" | ./agent`
 
 ### Phase 2: Discord
 - [x] Discord bot setup (listen for DMs)
@@ -289,10 +274,10 @@ For integration tests with the LLM, use a test flag or separate build tag to avo
 ```bash
 # View SQLite contents
 sqlite3 data.db ".tables"
-sqlite3 data.db "SELECT * FROM todos"
+sqlite3 data.db "SELECT * FROM things"
 
 # Test agent locally
-echo "what are my active projects?" | go run ./cmd/agent
+echo "what things am I tracking?" | go run ./cmd/agent
 
 # Check Discord bot token is valid
 # (bot should come online in your server)

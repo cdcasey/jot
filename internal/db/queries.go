@@ -8,35 +8,17 @@ import (
 	"time"
 )
 
-type Project struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Status      string `json:"status"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-}
-
-type Todo struct {
-	ID          int64  `json:"id"`
-	ProjectID   *int64 `json:"project_id,omitempty"`
-	Title       string `json:"title"`
-	Notes       string `json:"notes,omitempty"`
-	Status      string `json:"status"`
-	Priority    string `json:"priority"`
-	DueDate     string `json:"due_date,omitempty"`
-	CreatedAt   string `json:"created_at"`
-	UpdatedAt   string `json:"updated_at"`
-	CompletedAt string `json:"completed_at,omitempty"`
-}
-
-type Idea struct {
-	ID        int64    `json:"id"`
-	ProjectID *int64   `json:"project_id,omitempty"`
-	Title     string   `json:"title"`
-	Content   string   `json:"content,omitempty"`
-	Tags      []string `json:"tags,omitempty"`
-	CreatedAt string   `json:"created_at"`
+type Thing struct {
+	ID          int64    `json:"id"`
+	Title       string   `json:"title"`
+	Notes       string   `json:"notes,omitempty"`
+	Status      string   `json:"status"`
+	Priority    string   `json:"priority"`
+	Tags        []string `json:"tags,omitempty"`
+	DueDate     string   `json:"due_date,omitempty"`
+	CreatedAt   string   `json:"created_at"`
+	UpdatedAt   string   `json:"updated_at"`
+	CompletedAt string   `json:"completed_at,omitempty"`
 }
 
 type Memory struct {
@@ -44,17 +26,16 @@ type Memory struct {
 	Content   string   `json:"content"`
 	Category  string   `json:"category"`
 	Tags      []string `json:"tags,omitempty"`
-	ProjectID *int64   `json:"project_id,omitempty"`
+	ThingID   *int64   `json:"thing_id,omitempty"`
 	Source    string   `json:"source"`
 	ExpiresAt string   `json:"expires_at,omitempty"`
 	CreatedAt string   `json:"created_at"`
 }
 
 type Summary struct {
-	ActiveProjects int    `json:"active_projects"`
-	PendingTodos   int    `json:"pending_todos"`
-	OverdueTodos   []Todo `json:"overdue_todos,omitempty"`
-	RecentTodos    []Todo `json:"recent_todos,omitempty"`
+	OpenThings    int     `json:"open_things"`
+	OverdueThings []Thing `json:"overdue_things,omitempty"`
+	RecentThings  []Thing `json:"recent_things,omitempty"`
 }
 
 type Skill struct {
@@ -67,56 +48,12 @@ type Skill struct {
 	UpdatedAt   string   `json:"updated_at"`
 }
 
-// ListProjects returns projects, optionally filtered by status.
-func (d *DB) ListProjects(status string) ([]Project, error) {
-	query := "SELECT id, name, COALESCE(description,''), status, created_at, updated_at FROM projects"
+// ListThings returns things, optionally filtered by status, priority, or tag.
+func (d *DB) ListThings(status, priority, tag string) ([]Thing, error) {
+	query := `SELECT id, title, COALESCE(notes,''), status, priority,
+		COALESCE(tags,'[]'), COALESCE(due_date,''), created_at, updated_at,
+		COALESCE(completed_at,'') FROM things WHERE 1=1`
 	var args []any
-	if status != "" {
-		query += " WHERE status = ?"
-		args = append(args, status)
-	}
-	query += " ORDER BY updated_at DESC"
-	rows, err := d.conn.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("listing projects: %w", err)
-	}
-	defer rows.Close()
-	var projects []Project
-	for rows.Next() {
-		var p Project
-		if err := rows.Scan(&p.ID, &p.Name, &p.Description, &p.Status, &p.CreatedAt, &p.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("scanning project: %w", err)
-		}
-		projects = append(projects, p)
-	}
-	return projects, rows.Err()
-}
-
-// CreateProject creates a new project and returns its ID.
-func (d *DB) CreateProject(name, description string) (int64, error) {
-	res, err := d.conn.Exec(
-		"INSERT INTO projects (name, description) VALUES (?, ?)",
-		name, nullStr(description),
-	)
-	if err != nil {
-		return 0, fmt.Errorf("creating project: %w", err)
-	}
-	return res.LastInsertId()
-}
-
-// UpdateProject updates fields on a project by ID.
-func (d *DB) UpdateProject(id int64, fields map[string]any) error {
-	return d.updateRow("projects", id, fields)
-}
-
-// ListTodos returns todos, optionally filtered by project_id, status, and priority.
-func (d *DB) ListTodos(projectID *int64, status, priority string) ([]Todo, error) {
-	query := "SELECT id, project_id, title, COALESCE(notes,''), status, priority, COALESCE(due_date,''), created_at, updated_at, COALESCE(completed_at,'') FROM todos WHERE 1=1"
-	var args []any
-	if projectID != nil {
-		query += " AND project_id = ?"
-		args = append(args, *projectID)
-	}
 	if status != "" {
 		query += " AND status = ?"
 		args = append(args, status)
@@ -125,101 +62,106 @@ func (d *DB) ListTodos(projectID *int64, status, priority string) ([]Todo, error
 		query += " AND priority = ?"
 		args = append(args, priority)
 	}
-	query += " ORDER BY CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END, updated_at DESC"
-	rows, err := d.conn.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("listing todos: %w", err)
-	}
-	defer rows.Close()
-	var todos []Todo
-	for rows.Next() {
-		var t Todo
-		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt); err != nil {
-			return nil, fmt.Errorf("scanning todo: %w", err)
-		}
-		todos = append(todos, t)
-	}
-	return todos, rows.Err()
-}
-
-// CreateTodo creates a new todo and returns its ID.
-func (d *DB) CreateTodo(title string, projectID *int64, notes, priority, dueDate string) (int64, error) {
-	if priority == "" {
-		priority = "normal"
-	}
-	res, err := d.conn.Exec(
-		"INSERT INTO todos (title, project_id, notes, priority, due_date) VALUES (?, ?, ?, ?, ?)",
-		title, projectID, nullStr(notes), priority, nullStr(dueDate),
-	)
-	if err != nil {
-		return 0, fmt.Errorf("creating todo: %w", err)
-	}
-	return res.LastInsertId()
-}
-
-// UpdateTodo updates fields on a todo by ID.
-func (d *DB) UpdateTodo(id int64, fields map[string]any) error {
-	return d.updateRow("todos", id, fields)
-}
-
-// CompleteTodo marks a todo as done.
-func (d *DB) CompleteTodo(id int64) error {
-	_, err := d.conn.Exec(
-		"UPDATE todos SET status = 'done', completed_at = ?, updated_at = ? WHERE id = ?",
-		time.Now().UTC().Format(time.DateTime), time.Now().UTC().Format(time.DateTime), id,
-	)
-	if err != nil {
-		return fmt.Errorf("completing todo: %w", err)
-	}
-	return nil
-}
-
-// ListIdeas returns ideas, optionally filtered by project_id or tags.
-func (d *DB) ListIdeas(projectID *int64, tag string) ([]Idea, error) {
-	query := "SELECT id, project_id, title, COALESCE(content,''), COALESCE(tags,'[]'), created_at FROM ideas WHERE 1=1"
-	var args []any
-	if projectID != nil {
-		query += " AND project_id = ?"
-		args = append(args, *projectID)
-	}
 	if tag != "" {
 		query += " AND tags LIKE ?"
 		args = append(args, "%\""+tag+"\"%")
 	}
-	query += " ORDER BY created_at DESC"
-	rows, err := d.conn.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("listing ideas: %w", err)
-	}
-	defer rows.Close()
-	var ideas []Idea
-	for rows.Next() {
-		var i Idea
-		var tagsJSON string
-		if err := rows.Scan(&i.ID, &i.ProjectID, &i.Title, &i.Content, &tagsJSON, &i.CreatedAt); err != nil {
-			return nil, fmt.Errorf("scanning idea: %w", err)
-		}
-		_ = json.Unmarshal([]byte(tagsJSON), &i.Tags) // malformed tags default to empty; not worth failing the query
-		ideas = append(ideas, i)
-	}
-	return ideas, rows.Err()
+	query += " ORDER BY CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 WHEN 'low' THEN 3 END, updated_at DESC"
+	return d.scanThings(query, args...)
 }
 
-// CreateIdea creates a new idea and returns its ID.
-func (d *DB) CreateIdea(title, content string, projectID *int64, tags []string) (int64, error) {
+// CreateThing creates a new thing and returns its ID.
+func (d *DB) CreateThing(title, notes, priority, dueDate string, tags []string) (int64, error) {
+	if priority == "" {
+		priority = "normal"
+	}
 	var tagsJSON string
 	if len(tags) > 0 {
-		b, _ := json.Marshal(tags) // []string marshal cannot fail
+		b, _ := json.Marshal(tags)
 		tagsJSON = string(b)
 	}
 	res, err := d.conn.Exec(
-		"INSERT INTO ideas (title, content, project_id, tags) VALUES (?, ?, ?, ?)",
-		title, nullStr(content), projectID, nullStr(tagsJSON),
+		"INSERT INTO things (title, notes, priority, due_date, tags) VALUES (?, ?, ?, ?, ?)",
+		title, nullStr(notes), priority, nullStr(dueDate), nullStr(tagsJSON),
 	)
 	if err != nil {
-		return 0, fmt.Errorf("creating idea: %w", err)
+		return 0, fmt.Errorf("creating thing: %w", err)
 	}
 	return res.LastInsertId()
+}
+
+// UpdateThing updates fields on a thing by ID.
+func (d *DB) UpdateThing(id int64, fields map[string]any) error {
+	return d.updateRow("things", id, fields)
+}
+
+// CompleteThing marks a thing as done.
+func (d *DB) CompleteThing(id int64) error {
+	now := time.Now().UTC().Format(time.DateTime)
+	_, err := d.conn.Exec(
+		"UPDATE things SET status = 'done', completed_at = ?, updated_at = ? WHERE id = ?",
+		now, now, id,
+	)
+	if err != nil {
+		return fmt.Errorf("completing thing: %w", err)
+	}
+	return nil
+}
+
+// GetSummary returns a high-level summary of current state.
+func (d *DB) GetSummary() (*Summary, error) {
+	s := &Summary{}
+
+	if err := d.conn.QueryRow("SELECT COUNT(*) FROM things WHERE status IN ('open','active')").Scan(&s.OpenThings); err != nil {
+		return nil, fmt.Errorf("counting open things: %w", err)
+	}
+
+	// Overdue things
+	now := time.Now().UTC().Format("2006-01-02")
+	overdue, err := d.scanThings(
+		`SELECT id, title, COALESCE(notes,''), status, priority,
+			COALESCE(tags,'[]'), COALESCE(due_date,''), created_at, updated_at,
+			COALESCE(completed_at,'') FROM things
+			WHERE due_date < ? AND due_date != '' AND status NOT IN ('done','dropped')
+			ORDER BY due_date`, now,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("querying overdue: %w", err)
+	}
+	s.OverdueThings = overdue
+
+	// Recent things (last 5 created)
+	recent, err := d.scanThings(
+		`SELECT id, title, COALESCE(notes,''), status, priority,
+			COALESCE(tags,'[]'), COALESCE(due_date,''), created_at, updated_at,
+			COALESCE(completed_at,'') FROM things
+			ORDER BY created_at DESC LIMIT 5`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("querying recent: %w", err)
+	}
+	s.RecentThings = recent
+
+	return s, nil
+}
+
+func (d *DB) scanThings(query string, args ...any) ([]Thing, error) {
+	rows, err := d.conn.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("querying things: %w", err)
+	}
+	defer rows.Close()
+	var things []Thing
+	for rows.Next() {
+		var t Thing
+		var tagsJSON string
+		if err := rows.Scan(&t.ID, &t.Title, &t.Notes, &t.Status, &t.Priority, &tagsJSON, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt); err != nil {
+			return nil, fmt.Errorf("scanning thing: %w", err)
+		}
+		_ = json.Unmarshal([]byte(tagsJSON), &t.Tags)
+		things = append(things, t)
+	}
+	return things, rows.Err()
 }
 
 // GetNote retrieves a note by key.
@@ -247,54 +189,6 @@ func (d *DB) SetNote(key, value string) error {
 	return nil
 }
 
-// GetSummary returns a high-level summary of current state.
-func (d *DB) GetSummary() (*Summary, error) {
-	s := &Summary{}
-
-	if err := d.conn.QueryRow("SELECT COUNT(*) FROM projects WHERE status = 'active'").Scan(&s.ActiveProjects); err != nil {
-		return nil, fmt.Errorf("counting active projects: %w", err)
-	}
-	if err := d.conn.QueryRow("SELECT COUNT(*) FROM todos WHERE status IN ('pending','in_progress')").Scan(&s.PendingTodos); err != nil {
-		return nil, fmt.Errorf("counting pending todos: %w", err)
-	}
-
-	// Overdue todos
-	now := time.Now().UTC().Format("2006-01-02")
-	rows, err := d.conn.Query(
-		"SELECT id, project_id, title, COALESCE(notes,''), status, priority, COALESCE(due_date,''), created_at, updated_at, COALESCE(completed_at,'') FROM todos WHERE due_date < ? AND status NOT IN ('done','cancelled') ORDER BY due_date",
-		now,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("querying overdue: %w", err)
-	}
-	defer rows.Close()
-	for rows.Next() {
-		var t Todo
-		if err := rows.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt); err != nil {
-			return nil, fmt.Errorf("scanning overdue todo: %w", err)
-		}
-		s.OverdueTodos = append(s.OverdueTodos, t)
-	}
-
-	// Recent todos (last 5 created)
-	rows2, err := d.conn.Query(
-		"SELECT id, project_id, title, COALESCE(notes,''), status, priority, COALESCE(due_date,''), created_at, updated_at, COALESCE(completed_at,'') FROM todos ORDER BY created_at DESC LIMIT 5",
-	)
-	if err != nil {
-		return nil, fmt.Errorf("querying recent: %w", err)
-	}
-	defer rows2.Close()
-	for rows2.Next() {
-		var t Todo
-		if err := rows2.Scan(&t.ID, &t.ProjectID, &t.Title, &t.Notes, &t.Status, &t.Priority, &t.DueDate, &t.CreatedAt, &t.UpdatedAt, &t.CompletedAt); err != nil {
-			return nil, fmt.Errorf("scanning recent todo: %w", err)
-		}
-		s.RecentTodos = append(s.RecentTodos, t)
-	}
-
-	return s, nil
-}
-
 // CreateCheckIn stores a check-in summary.
 func (d *DB) CreateCheckIn(summary string) (int64, error) {
 	res, err := d.conn.Exec("INSERT INTO check_ins (summary) VALUES (?)", summary)
@@ -305,15 +199,15 @@ func (d *DB) CreateCheckIn(summary string) (int64, error) {
 }
 
 // SaveMemory stores a new memory and returns its ID.
-func (d *DB) SaveMemory(content, category, source string, tags []string, projectID *int64, expiresAt string) (int64, error) {
+func (d *DB) SaveMemory(content, category, source string, tags []string, thingID *int64, expiresAt string) (int64, error) {
 	var tagsJSON string
 	if len(tags) > 0 {
-		b, _ := json.Marshal(tags) // []string marshal cannot fail
+		b, _ := json.Marshal(tags)
 		tagsJSON = string(b)
 	}
 	res, err := d.conn.Exec(
-		"INSERT INTO memories (content, category, source, tags, project_id, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
-		content, category, source, nullStr(tagsJSON), projectID, nullStr(expiresAt),
+		"INSERT INTO memories (content, category, source, tags, thing_id, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+		content, category, source, nullStr(tagsJSON), thingID, nullStr(expiresAt),
 	)
 	if err != nil {
 		return 0, fmt.Errorf("saving memory: %w", err)
@@ -321,12 +215,12 @@ func (d *DB) SaveMemory(content, category, source string, tags []string, project
 	return res.LastInsertId()
 }
 
-// SearchMemories searches memories by text query, category, tag, project, and date.
-func (d *DB) SearchMemories(query, category, tag string, projectID *int64, since string, limit int) ([]Memory, error) {
+// SearchMemories searches memories by text query, category, tag, thing, and date.
+func (d *DB) SearchMemories(query, category, tag string, thingID *int64, since string, limit int) ([]Memory, error) {
 	if limit <= 0 {
 		limit = 10
 	}
-	q := "SELECT id, content, category, COALESCE(tags,'[]'), project_id, source, COALESCE(expires_at,''), created_at FROM memories WHERE (expires_at IS NULL OR expires_at > datetime('now'))"
+	q := "SELECT id, content, category, COALESCE(tags,'[]'), thing_id, source, COALESCE(expires_at,''), created_at FROM memories WHERE (expires_at IS NULL OR expires_at > datetime('now'))"
 	var args []any
 	if query != "" {
 		q += " AND content LIKE ?"
@@ -340,9 +234,9 @@ func (d *DB) SearchMemories(query, category, tag string, projectID *int64, since
 		q += " AND tags LIKE ?"
 		args = append(args, "%\""+tag+"\"%")
 	}
-	if projectID != nil {
-		q += " AND project_id = ?"
-		args = append(args, *projectID)
+	if thingID != nil {
+		q += " AND thing_id = ?"
+		args = append(args, *thingID)
 	}
 	if since != "" {
 		q += " AND created_at >= ?"
@@ -358,7 +252,7 @@ func (d *DB) ListRecentMemories(category string, limit int) ([]Memory, error) {
 	if limit <= 0 {
 		limit = 10
 	}
-	q := "SELECT id, content, category, COALESCE(tags,'[]'), project_id, source, COALESCE(expires_at,''), created_at FROM memories WHERE (expires_at IS NULL OR expires_at > datetime('now'))"
+	q := "SELECT id, content, category, COALESCE(tags,'[]'), thing_id, source, COALESCE(expires_at,''), created_at FROM memories WHERE (expires_at IS NULL OR expires_at > datetime('now'))"
 	var args []any
 	if category != "" {
 		q += " AND category = ?"
@@ -371,7 +265,7 @@ func (d *DB) ListRecentMemories(category string, limit int) ([]Memory, error) {
 
 // GetRecentMemoriesForCheckIn returns memories from the last N days, prioritizing blockers and decisions.
 func (d *DB) GetRecentMemoriesForCheckIn(days int) ([]Memory, error) {
-	q := `SELECT id, content, category, COALESCE(tags,'[]'), project_id, source, COALESCE(expires_at,''), created_at
+	q := `SELECT id, content, category, COALESCE(tags,'[]'), thing_id, source, COALESCE(expires_at,''), created_at
 		FROM memories
 		WHERE created_at > datetime('now', '-' || ? || ' days')
 		  AND (expires_at IS NULL OR expires_at > datetime('now'))
@@ -414,19 +308,18 @@ func (d *DB) scanMemories(query string, args ...any) ([]Memory, error) {
 	for rows.Next() {
 		var m Memory
 		var tagsJSON string
-		if err := rows.Scan(&m.ID, &m.Content, &m.Category, &tagsJSON, &m.ProjectID, &m.Source, &m.ExpiresAt, &m.CreatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.Content, &m.Category, &tagsJSON, &m.ThingID, &m.Source, &m.ExpiresAt, &m.CreatedAt); err != nil {
 			return nil, fmt.Errorf("scanning memory: %w", err)
 		}
-		_ = json.Unmarshal([]byte(tagsJSON), &m.Tags) // malformed tags default to empty; not worth failing the query
+		_ = json.Unmarshal([]byte(tagsJSON), &m.Tags)
 		memories = append(memories, m)
 	}
 	return memories, rows.Err()
 }
 
 var allowedColumns = map[string]map[string]bool{
-	"todos":    {"title": true, "notes": true, "status": true, "priority": true, "due_date": true, "project_id": true, "completed_at": true},
-	"projects": {"name": true, "description": true, "status": true},
-	"skills":   {"name": true, "description": true, "content": true, "tags": true},
+	"things": {"title": true, "notes": true, "status": true, "priority": true, "due_date": true, "tags": true, "completed_at": true},
+	"skills": {"name": true, "description": true, "content": true, "tags": true},
 }
 
 // updateRow is a generic helper for updating a row's fields.
@@ -468,7 +361,7 @@ func nullStr(s string) any {
 func (d *DB) CreateSkill(name, description, content string, tags []string) (int64, error) {
 	var tagsJSON string
 	if len(tags) > 0 {
-		b, _ := json.Marshal(tags) // []string marshal cannot fail
+		b, _ := json.Marshal(tags)
 		tagsJSON = string(b)
 	}
 	res, err := d.conn.Exec(
@@ -517,7 +410,7 @@ func (d *DB) ListSkills(tag string) ([]Skill, error) {
 		if err := rows.Scan(&s.ID, &s.Name, &s.Description, &s.Content, &tagsJSON, &s.CreatedAt, &s.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scanning skill: %w", err)
 		}
-		_ = json.Unmarshal([]byte(tagsJSON), &s.Tags) // malformed tags default to empty; not worth failing the query
+		_ = json.Unmarshal([]byte(tagsJSON), &s.Tags)
 		skills = append(skills, s)
 	}
 	return skills, rows.Err()

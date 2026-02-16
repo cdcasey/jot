@@ -1,32 +1,14 @@
-CREATE TABLE IF NOT EXISTS projects (
+CREATE TABLE IF NOT EXISTS things (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    status TEXT DEFAULT 'active',
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS todos (
-    id INTEGER PRIMARY KEY,
-    project_id INTEGER REFERENCES projects(id),
     title TEXT NOT NULL,
     notes TEXT,
-    status TEXT DEFAULT 'pending',
+    status TEXT DEFAULT 'open',
     priority TEXT DEFAULT 'normal',
+    tags TEXT,
     due_date TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
     completed_at TEXT
-);
-
-CREATE TABLE IF NOT EXISTS ideas (
-    id INTEGER PRIMARY KEY,
-    project_id INTEGER REFERENCES projects(id),
-    title TEXT NOT NULL,
-    content TEXT,
-    tags TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS check_ins (
@@ -47,18 +29,18 @@ CREATE TABLE IF NOT EXISTS memories (
     content TEXT NOT NULL,
     category TEXT NOT NULL DEFAULT 'observation',
     tags TEXT,
-    project_id INTEGER REFERENCES projects(id),
+    thing_id INTEGER REFERENCES things(id),
     source TEXT NOT NULL DEFAULT 'agent',
     expires_at TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS skills (
-	id INTEGER PRIMARY KEY,
-	name TEXT UNIQUE NOT NULL,
-	description TEXT NOT NULL,
-	content TEXT NOT NULL,
-	tags TEXT,
- 	created_at TEXT DEFAULT (datetime('now')),
-  updated_at TEXT DEFAULT (datetime('now'))
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );

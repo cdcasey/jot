@@ -15,296 +15,147 @@ func openTestDB(t *testing.T) *DB {
 	return d
 }
 
-// --- Projects ---
+// --- Things ---
 
-func TestCreateAndListProjects(t *testing.T) {
+func TestCreateAndListThings(t *testing.T) {
 	d := openTestDB(t)
 
-	id, err := d.CreateProject("test project", "a description")
+	id, err := d.CreateThing("buy milk", "from the store", "high", "2025-12-31", []string{"errands", "food"})
 	if err != nil {
-		t.Fatalf("CreateProject: %v", err)
+		t.Fatalf("CreateThing: %v", err)
 	}
 
-	projects, err := d.ListProjects("")
+	things, err := d.ListThings("", "", "")
 	if err != nil {
-		t.Fatalf("ListProjects: %v", err)
+		t.Fatalf("ListThings: %v", err)
 	}
-	if len(projects) != 1 {
-		t.Fatalf("expected 1 project, got %d", len(projects))
+	if len(things) != 1 {
+		t.Fatalf("expected 1 thing, got %d", len(things))
 	}
-	if projects[0].ID != id {
-		t.Errorf("expected ID %d, got %d", id, projects[0].ID)
+	th := things[0]
+	if th.ID != id {
+		t.Errorf("expected ID %d, got %d", id, th.ID)
 	}
-	if projects[0].Name != "test project" {
-		t.Errorf("expected name %q, got %q", "test project", projects[0].Name)
+	if th.Title != "buy milk" {
+		t.Errorf("expected title %q, got %q", "buy milk", th.Title)
 	}
-	if projects[0].Description != "a description" {
-		t.Errorf("expected description %q, got %q", "a description", projects[0].Description)
+	if th.Notes != "from the store" {
+		t.Errorf("expected notes %q, got %q", "from the store", th.Notes)
 	}
-	if projects[0].Status != "active" {
-		t.Errorf("expected status %q, got %q", "active", projects[0].Status)
+	if th.Priority != "high" {
+		t.Errorf("expected priority %q, got %q", "high", th.Priority)
+	}
+	if th.DueDate != "2025-12-31" {
+		t.Errorf("expected due_date %q, got %q", "2025-12-31", th.DueDate)
+	}
+	if th.Status != "open" {
+		t.Errorf("expected status %q, got %q", "open", th.Status)
+	}
+	if len(th.Tags) != 2 || th.Tags[0] != "errands" || th.Tags[1] != "food" {
+		t.Errorf("expected tags [errands, food], got %v", th.Tags)
 	}
 }
 
-func TestListProjectsFilterByStatus(t *testing.T) {
+func TestListThingsFilters(t *testing.T) {
 	d := openTestDB(t)
 
-	d.CreateProject("active one", "")
-	id2, _ := d.CreateProject("paused one", "")
-	d.UpdateProject(id2, map[string]any{"status": "paused"})
-
-	active, err := d.ListProjects("active")
-	if err != nil {
-		t.Fatalf("ListProjects(active): %v", err)
-	}
-	if len(active) != 1 {
-		t.Fatalf("expected 1 active project, got %d", len(active))
-	}
-	if active[0].Name != "active one" {
-		t.Errorf("expected %q, got %q", "active one", active[0].Name)
-	}
-
-	paused, err := d.ListProjects("paused")
-	if err != nil {
-		t.Fatalf("ListProjects(paused): %v", err)
-	}
-	if len(paused) != 1 {
-		t.Fatalf("expected 1 paused project, got %d", len(paused))
-	}
-}
-
-func TestUpdateProject(t *testing.T) {
-	d := openTestDB(t)
-
-	id, _ := d.CreateProject("original", "desc")
-
-	err := d.UpdateProject(id, map[string]any{"name": "renamed"})
-	if err != nil {
-		t.Fatalf("UpdateProject: %v", err)
-	}
-
-	projects, _ := d.ListProjects("")
-	if projects[0].Name != "renamed" {
-		t.Errorf("expected name %q, got %q", "renamed", projects[0].Name)
-	}
-	// Description should be unchanged
-	if projects[0].Description != "desc" {
-		t.Errorf("description changed unexpectedly: got %q", projects[0].Description)
-	}
-}
-
-// --- Todos ---
-
-func TestCreateAndListTodos(t *testing.T) {
-	d := openTestDB(t)
-
-	id, err := d.CreateTodo("buy milk", nil, "from the store", "high", "2025-12-31")
-	if err != nil {
-		t.Fatalf("CreateTodo: %v", err)
-	}
-
-	todos, err := d.ListTodos(nil, "", "")
-	if err != nil {
-		t.Fatalf("ListTodos: %v", err)
-	}
-	if len(todos) != 1 {
-		t.Fatalf("expected 1 todo, got %d", len(todos))
-	}
-	if todos[0].ID != id {
-		t.Errorf("expected ID %d, got %d", id, todos[0].ID)
-	}
-	if todos[0].Title != "buy milk" {
-		t.Errorf("expected title %q, got %q", "buy milk", todos[0].Title)
-	}
-	if todos[0].Notes != "from the store" {
-		t.Errorf("expected notes %q, got %q", "from the store", todos[0].Notes)
-	}
-	if todos[0].Priority != "high" {
-		t.Errorf("expected priority %q, got %q", "high", todos[0].Priority)
-	}
-	if todos[0].DueDate != "2025-12-31" {
-		t.Errorf("expected due_date %q, got %q", "2025-12-31", todos[0].DueDate)
-	}
-	if todos[0].Status != "pending" {
-		t.Errorf("expected status %q, got %q", "pending", todos[0].Status)
-	}
-}
-
-func TestListTodosFilters(t *testing.T) {
-	d := openTestDB(t)
-
-	pid, _ := d.CreateProject("proj", "")
-	d.CreateTodo("task A", &pid, "", "high", "")
-	d.CreateTodo("task B", nil, "", "low", "")
-	id3, _ := d.CreateTodo("task C", &pid, "", "normal", "")
-	d.UpdateTodo(id3, map[string]any{"status": "in_progress"})
+	d.CreateThing("task A", "", "high", "", []string{"work"})
+	d.CreateThing("task B", "", "low", "", []string{"personal"})
+	id3, _ := d.CreateThing("task C", "", "normal", "", []string{"work"})
+	d.UpdateThing(id3, map[string]any{"status": "active"})
 
 	tests := []struct {
 		name      string
-		projectID *int64
 		status    string
 		priority  string
+		tag       string
 		wantCount int
 	}{
-		{"no filter", nil, "", "", 3},
-		{"by project", &pid, "", "", 2},
-		{"by status pending", nil, "pending", "", 2},
-		{"by status in_progress", nil, "in_progress", "", 1},
-		{"by priority high", nil, "", "high", 1},
-		{"by project+status", &pid, "pending", "", 1},
+		{"no filter", "", "", "", 3},
+		{"by status open", "open", "", "", 2},
+		{"by status active", "active", "", "", 1},
+		{"by priority high", "", "high", "", 1},
+		{"by tag work", "", "", "work", 2},
+		{"by status+tag", "open", "", "work", 1},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			todos, err := d.ListTodos(tt.projectID, tt.status, tt.priority)
+			things, err := d.ListThings(tt.status, tt.priority, tt.tag)
 			if err != nil {
-				t.Fatalf("ListTodos: %v", err)
+				t.Fatalf("ListThings: %v", err)
 			}
-			if len(todos) != tt.wantCount {
-				t.Errorf("expected %d todos, got %d", tt.wantCount, len(todos))
+			if len(things) != tt.wantCount {
+				t.Errorf("expected %d things, got %d", tt.wantCount, len(things))
 			}
 		})
 	}
 }
 
-func TestCompleteTodo(t *testing.T) {
+func TestCompleteThing(t *testing.T) {
 	d := openTestDB(t)
 
-	id, _ := d.CreateTodo("finish this", nil, "", "", "")
-	err := d.CompleteTodo(id)
+	id, _ := d.CreateThing("finish this", "", "", "", nil)
+	err := d.CompleteThing(id)
 	if err != nil {
-		t.Fatalf("CompleteTodo: %v", err)
+		t.Fatalf("CompleteThing: %v", err)
 	}
 
-	todos, _ := d.ListTodos(nil, "done", "")
-	if len(todos) != 1 {
-		t.Fatalf("expected 1 done todo, got %d", len(todos))
+	things, _ := d.ListThings("done", "", "")
+	if len(things) != 1 {
+		t.Fatalf("expected 1 done thing, got %d", len(things))
 	}
-	if todos[0].Status != "done" {
-		t.Errorf("expected status %q, got %q", "done", todos[0].Status)
+	if things[0].Status != "done" {
+		t.Errorf("expected status %q, got %q", "done", things[0].Status)
 	}
-	if todos[0].CompletedAt == "" {
+	if things[0].CompletedAt == "" {
 		t.Error("expected completed_at to be set")
 	}
 }
 
-func TestUpdateTodo(t *testing.T) {
+func TestUpdateThing(t *testing.T) {
 	d := openTestDB(t)
 
-	id, _ := d.CreateTodo("original title", nil, "original notes", "normal", "")
+	id, _ := d.CreateThing("original title", "original notes", "normal", "", nil)
 
-	err := d.UpdateTodo(id, map[string]any{"title": "new title", "priority": "urgent"})
+	err := d.UpdateThing(id, map[string]any{"title": "new title", "priority": "urgent"})
 	if err != nil {
-		t.Fatalf("UpdateTodo: %v", err)
+		t.Fatalf("UpdateThing: %v", err)
 	}
 
-	todos, _ := d.ListTodos(nil, "", "")
-	if todos[0].Title != "new title" {
-		t.Errorf("expected title %q, got %q", "new title", todos[0].Title)
+	things, _ := d.ListThings("", "", "")
+	if things[0].Title != "new title" {
+		t.Errorf("expected title %q, got %q", "new title", things[0].Title)
 	}
-	if todos[0].Priority != "urgent" {
-		t.Errorf("expected priority %q, got %q", "urgent", todos[0].Priority)
+	if things[0].Priority != "urgent" {
+		t.Errorf("expected priority %q, got %q", "urgent", things[0].Priority)
 	}
 	// Notes should be unchanged
-	if todos[0].Notes != "original notes" {
-		t.Errorf("notes changed unexpectedly: got %q", todos[0].Notes)
+	if things[0].Notes != "original notes" {
+		t.Errorf("notes changed unexpectedly: got %q", things[0].Notes)
 	}
 }
 
-func TestUpdateTodoEmptyFields(t *testing.T) {
+func TestUpdateThingEmptyFields(t *testing.T) {
 	d := openTestDB(t)
 
-	id, _ := d.CreateTodo("title", nil, "", "", "")
+	id, _ := d.CreateThing("title", "", "", "", nil)
 
 	// Empty fields map should be a no-op, not an error
-	err := d.UpdateTodo(id, map[string]any{})
+	err := d.UpdateThing(id, map[string]any{})
 	if err != nil {
-		t.Fatalf("UpdateTodo with empty fields: %v", err)
+		t.Fatalf("UpdateThing with empty fields: %v", err)
 	}
 }
 
-func TestUpdateTodoRejectsBogusColumn(t *testing.T) {
+func TestUpdateThingRejectsBogusColumn(t *testing.T) {
 	d := openTestDB(t)
 
-	id, _ := d.CreateTodo("task", nil, "", "", "")
+	id, _ := d.CreateThing("task", "", "", "", nil)
 
-	err := d.UpdateTodo(id, map[string]any{"title\"; DROP TABLE todos; --": "pwned"})
+	err := d.UpdateThing(id, map[string]any{"title\"; DROP TABLE things; --": "pwned"})
 	if err == nil {
 		t.Fatal("expected error for disallowed column, got nil")
-	}
-}
-
-func TestUpdateProjectRejectsBogusColumn(t *testing.T) {
-	d := openTestDB(t)
-
-	id, _ := d.CreateProject("proj", "")
-
-	err := d.UpdateProject(id, map[string]any{"evil_col": "bad"})
-	if err == nil {
-		t.Fatal("expected error for disallowed column, got nil")
-	}
-}
-
-// --- Ideas ---
-
-func TestCreateAndListIdeas(t *testing.T) {
-	d := openTestDB(t)
-
-	id, err := d.CreateIdea("cool idea", "some details", nil, []string{"go", "ai"})
-	if err != nil {
-		t.Fatalf("CreateIdea: %v", err)
-	}
-
-	ideas, err := d.ListIdeas(nil, "")
-	if err != nil {
-		t.Fatalf("ListIdeas: %v", err)
-	}
-	if len(ideas) != 1 {
-		t.Fatalf("expected 1 idea, got %d", len(ideas))
-	}
-	if ideas[0].ID != id {
-		t.Errorf("expected ID %d, got %d", id, ideas[0].ID)
-	}
-	if ideas[0].Title != "cool idea" {
-		t.Errorf("expected title %q, got %q", "cool idea", ideas[0].Title)
-	}
-	if len(ideas[0].Tags) != 2 || ideas[0].Tags[0] != "go" || ideas[0].Tags[1] != "ai" {
-		t.Errorf("expected tags [go, ai], got %v", ideas[0].Tags)
-	}
-}
-
-func TestListIdeasFilterByTag(t *testing.T) {
-	d := openTestDB(t)
-
-	d.CreateIdea("idea 1", "", nil, []string{"go", "ai"})
-	d.CreateIdea("idea 2", "", nil, []string{"rust"})
-	d.CreateIdea("idea 3", "", nil, nil)
-
-	ideas, err := d.ListIdeas(nil, "go")
-	if err != nil {
-		t.Fatalf("ListIdeas(tag=go): %v", err)
-	}
-	if len(ideas) != 1 {
-		t.Fatalf("expected 1 idea with tag 'go', got %d", len(ideas))
-	}
-	if ideas[0].Title != "idea 1" {
-		t.Errorf("expected %q, got %q", "idea 1", ideas[0].Title)
-	}
-}
-
-func TestListIdeasFilterByProject(t *testing.T) {
-	d := openTestDB(t)
-
-	pid, _ := d.CreateProject("proj", "")
-	d.CreateIdea("linked idea", "", &pid, nil)
-	d.CreateIdea("unlinked idea", "", nil, nil)
-
-	ideas, err := d.ListIdeas(&pid, "")
-	if err != nil {
-		t.Fatalf("ListIdeas(project): %v", err)
-	}
-	if len(ideas) != 1 {
-		t.Fatalf("expected 1 idea for project, got %d", len(ideas))
 	}
 }
 
@@ -349,30 +200,23 @@ func TestGetSetNote(t *testing.T) {
 func TestGetSummary(t *testing.T) {
 	d := openTestDB(t)
 
-	d.CreateProject("active proj", "")
-	pid2, _ := d.CreateProject("archived proj", "")
-	d.UpdateProject(pid2, map[string]any{"status": "archived"})
-
-	d.CreateTodo("pending task", nil, "", "", "")
-	d.CreateTodo("overdue task", nil, "", "", "2020-01-01")
-	id3, _ := d.CreateTodo("done task", nil, "", "", "")
-	d.CompleteTodo(id3)
+	d.CreateThing("open task", "", "", "", nil)
+	d.CreateThing("overdue task", "", "", "2020-01-01", nil)
+	id3, _ := d.CreateThing("done task", "", "", "", nil)
+	d.CompleteThing(id3)
 
 	s, err := d.GetSummary()
 	if err != nil {
 		t.Fatalf("GetSummary: %v", err)
 	}
-	if s.ActiveProjects != 1 {
-		t.Errorf("expected 1 active project, got %d", s.ActiveProjects)
+	if s.OpenThings != 2 {
+		t.Errorf("expected 2 open things, got %d", s.OpenThings)
 	}
-	if s.PendingTodos != 2 {
-		t.Errorf("expected 2 pending todos, got %d", s.PendingTodos)
+	if len(s.OverdueThings) != 1 {
+		t.Errorf("expected 1 overdue thing, got %d", len(s.OverdueThings))
 	}
-	if len(s.OverdueTodos) != 1 {
-		t.Errorf("expected 1 overdue todo, got %d", len(s.OverdueTodos))
-	}
-	if len(s.RecentTodos) != 3 {
-		t.Errorf("expected 3 recent todos, got %d", len(s.RecentTodos))
+	if len(s.RecentThings) != 3 {
+		t.Errorf("expected 3 recent things, got %d", len(s.RecentThings))
 	}
 }
 
@@ -490,22 +334,22 @@ func TestMemoryExpiry(t *testing.T) {
 	}
 }
 
-func TestSearchMemoriesByProject(t *testing.T) {
+func TestSearchMemoriesByThing(t *testing.T) {
 	d := openTestDB(t)
 
-	pid, _ := d.CreateProject("proj", "")
-	d.SaveMemory("project memory", "observation", "agent", nil, &pid, "")
+	thingID, _ := d.CreateThing("my project", "", "", "", nil)
+	d.SaveMemory("thing memory", "observation", "agent", nil, &thingID, "")
 	d.SaveMemory("general memory", "observation", "agent", nil, nil, "")
 
-	results, err := d.SearchMemories("", "", "", &pid, "", 10)
+	results, err := d.SearchMemories("", "", "", &thingID, "", 10)
 	if err != nil {
-		t.Fatalf("SearchMemories(project): %v", err)
+		t.Fatalf("SearchMemories(thing): %v", err)
 	}
 	if len(results) != 1 {
-		t.Fatalf("expected 1 result for project, got %d", len(results))
+		t.Fatalf("expected 1 result for thing, got %d", len(results))
 	}
-	if results[0].Content != "project memory" {
-		t.Errorf("expected %q, got %q", "project memory", results[0].Content)
+	if results[0].Content != "thing memory" {
+		t.Errorf("expected %q, got %q", "thing memory", results[0].Content)
 	}
 }
 
@@ -542,13 +386,13 @@ func TestCreateAndListSkills(t *testing.T) {
 		t.Fatalf("ListSkills: %v", err)
 	}
 	if len(skills) != 1 {
-		t.Fatalf("expected 1 idea, got %d", len(skills))
+		t.Fatalf("expected 1 skill, got %d", len(skills))
 	}
 	if skills[0].ID != id {
 		t.Errorf("expected ID %d, got %d", id, skills[0].ID)
 	}
 	if skills[0].Name != "cool skill" {
-		t.Errorf("expected title %q, got %q", "cool idea", skills[0].Name)
+		t.Errorf("expected name %q, got %q", "cool skill", skills[0].Name)
 	}
 	if len(skills[0].Tags) != 2 || skills[0].Tags[0] != "go" || skills[0].Tags[1] != "ai" {
 		t.Errorf("expected tags [go, ai], got %v", skills[0].Tags)
