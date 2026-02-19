@@ -1,4 +1,4 @@
-.PHONY: build test clean run
+.PHONY: build test clean run install uninstall
 
 build:
 	go build -o jot ./cmd/agent
@@ -14,3 +14,9 @@ clean:
 
 run: build
 	./jot
+
+install: build
+	./jot install
+
+uninstall:
+	jot uninstall
