@@ -50,7 +50,7 @@ func runCommand(cmd string) error {
 		run()
 		return nil
 	default:
-		return fmt.Errorf("unknown command: %s\nusage: jot [install|uninstall|start|stop|restart|status|logs|run]", cmd)
+		return fmt.Errorf("unknown command: %s\nusage: jotd [install|uninstall|start|stop|restart|status|logs|run]", cmd)
 	}
 }
 
@@ -100,7 +100,7 @@ func runCLI(ag *agent.Agent) {
 	isPipe := (stat.Mode() & os.ModeCharDevice) == 0
 
 	if !isPipe {
-		fmt.Print("jot> ")
+		fmt.Print("jotd> ")
 	}
 
 	var history []llm.Message
@@ -109,7 +109,7 @@ func runCLI(ag *agent.Agent) {
 		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
 			if !isPipe {
-				fmt.Print("jot> ")
+				fmt.Print("jotd> ")
 			}
 			continue
 		}
@@ -128,7 +128,7 @@ func runCLI(ag *agent.Agent) {
 		if isPipe {
 			break // single exchange in pipe mode
 		}
-		fmt.Print("jot> ")
+		fmt.Print("jotd> ")
 	}
 }
 

@@ -15,7 +15,7 @@ import (
 
 const (
 	label     = "com.jot.agent"
-	binDest   = "/usr/local/bin/jot"
+	binDest   = "/usr/local/bin/jotd"
 	plistName = label + ".plist"
 )
 
@@ -36,31 +36,10 @@ func logDir() string {
 func stdoutLogPath() string { return filepath.Join(logDir(), "jot-stdout.log") }
 func stderrLogPath() string { return filepath.Join(logDir(), "jot-stderr.log") }
 
-// Install copies the binary to /usr/local/bin, seeds ~/.jot/config from .env
-// if needed, generates a launchd plist, and loads it.
+// Install seeds ~/.jot/config from .env if needed, generates a launchd plist,
+// and loads it. The binary copy to /usr/local/bin is handled by the Makefile
+// (requires sudo), keeping this function unprivileged.
 func Install() error {
-	exe, err := os.Executable()
-	if err != nil {
-		return fmt.Errorf("resolving executable path: %w", err)
-	}
-	exe, err = filepath.EvalSymlinks(exe)
-	if err != nil {
-		return fmt.Errorf("resolving symlinks: %w", err)
-	}
-
-	// Copy binary to /usr/local/bin
-	input, err := os.ReadFile(exe)
-	if err != nil {
-		return fmt.Errorf("reading binary: %w", err)
-	}
-	if err := os.MkdirAll(filepath.Dir(binDest), 0755); err != nil {
-		return fmt.Errorf("creating %s: %w", filepath.Dir(binDest), err)
-	}
-	if err := os.WriteFile(binDest, input, 0755); err != nil {
-		return fmt.Errorf("copying binary to %s: %w", binDest, err)
-	}
-	fmt.Printf("installed binary to %s\n", binDest)
-
 	// Seed ~/.jot/config from .env if config doesn't exist yet
 	configFile := config.ConfigFile()
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
@@ -140,7 +119,12 @@ func Uninstall() error {
 	}
 
 	if _, err := os.Stat(binDest); err == nil {
-		if err := os.Remove(binDest); err != nil {
+		fmt.Printf("removing %s (may require sudo password)...\n", binDest)
+		cmd := exec.Command("sudo", "rm", binDest)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("removing binary: %w", err)
 		}
 		fmt.Printf("removed %s\n", binDest)

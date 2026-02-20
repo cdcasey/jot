@@ -1,7 +1,7 @@
 .PHONY: build test clean run install uninstall
 
 build:
-	go build -o jot ./cmd/agent
+	go build -o jotd ./cmd/agent
 
 test:
 	go test ./...
@@ -10,13 +10,14 @@ vet:
 	go vet ./...
 
 clean:
-	rm -f jot
+	rm -f jotd
 
 run: build
-	./jot
+	./jotd
 
 install: build
-	./jot install
+	sudo cp ./jotd /usr/local/bin/jotd
+	./jotd install
 
-uninstall:
-	jot uninstall
+uninstall: build
+	./jotd uninstall
