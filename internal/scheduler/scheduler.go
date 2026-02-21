@@ -153,7 +153,7 @@ func (s *Scheduler) fireReminders() {
 	}
 	for _, r := range pending {
 		r := r
-		msg := fmt.Sprintf("A reminder you set: %s", r.Prompt)
+		msg := fmt.Sprintf("A reminder just fired. The user asked to be reminded: %q. Deliver this reminder to them in a brief, friendly message. Do NOT create a new reminder or ask clarifying questions — just notify them.", r.Prompt)
 		reply, _, err := s.agent.Run(context.Background(), nil, msg)
 		if err != nil {
 			log.Printf("scheduler: reminder %d agent error: %v", r.ID, err)
