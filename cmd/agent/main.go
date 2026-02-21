@@ -103,9 +103,9 @@ func runBot(cfg *config.Config, database *db.DB, ag *agent.Agent) {
 	}
 	defer bot.Close()
 
-	// Start scheduler if cron is configured
-	if cfg.CheckInCron != "" && cfg.DiscordWebhook != "" {
-		sched := scheduler.New(cfg.CheckInCron, cfg.DiscordWebhook, database, ag)
+	if cfg.DiscordWebhook != "" {
+		sched := scheduler.New(cfg.DiscordWebhook, database, ag)
+		sched.SeedDefaultSchedule(cfg.CheckInCron)
 		sched.Start()
 		defer sched.Stop()
 	}
