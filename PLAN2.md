@@ -379,7 +379,7 @@ Final cleanup once Phases 1-3 are working.
 
 When building context for any scheduled run or check-in, include a brief listing of available skill names and descriptions so the agent knows what tools/procedures it has available.
 
-### 4.2 Prune Old Conversation Summaries
+### 4.2 Prune Old Conversation Summaries ⚠️ BLOCKED on Phase 2
 
 Add a cleanup job: delete conversation summaries older than 30 days. Run this as part of `PruneExpiredMemories` or alongside it.
 
@@ -395,14 +395,30 @@ Add sections for skills, memory improvements, and multi-schedule cron. Update th
 
 Since the schema uses `CREATE TABLE IF NOT EXISTS` and `CREATE TRIGGER IF NOT EXISTS`, existing databases will get the new tables on next startup without losing data. Verify this works by running against a database that already has data in the existing tables.
 
-For FTS5 specifically: if the `memories` table already has rows when the FTS table is first created, the FTS index will be empty. Add a one-time backfill in `db.go` `Open()`:
+For FTS5 specifically ⚠️ BLOCKED on Phase 2: if the `memories` table already has rows when the FTS table is first created, the FTS index will be empty. Add a one-time backfill in `db.go` `Open()`:
 
 ```go
 // Backfill FTS if needed
 d.conn.Exec(`INSERT OR IGNORE INTO memories_fts(rowid, content) SELECT id, content FROM memories`)
 ```
 
-### 4.6 Final Test Pass
+### 4.6 Reminder DM Delivery
+
+Reminders currently fire to the Discord webhook (a channel), not back to the user as a DM. For time-sensitive reminders this feels wrong.
+
+**Implementation:**
+
+1. Add `SendDM(userID, content string) error` to `internal/discord/bot.go`, using the existing `discordgo.Session` to open a DM channel and send a message.
+
+2. Store the user's Discord ID as a note in the DB (`discord_user_id`). The agent can set this via `set_note` on first interaction, or the bot can capture it from the first DM it receives and store it automatically.
+
+3. Update `fireReminders()` in `scheduler.go` to send a DM if `discord_user_id` is set, falling back to the webhook if not.
+
+The scheduler needs a reference to the bot to call `SendDM`. Pass it in via `scheduler.New()` or add a `SetBot(*discord.Bot)` method — whichever is cleaner given circular import constraints (check: scheduler imports discord, discord imports nothing from scheduler, so direct injection is fine).
+
+**Note on future abstraction:** when/if a second notification target is added (e.g. SMS, push), extract a `Notifier` interface at that point. Don't do it now.
+
+### 4.7 Final Test Pass
 
 Run `go test ./...` and `go vet ./...`. Ensure all new and existing tests pass. Build and do a manual smoke test through the CLI.
 
