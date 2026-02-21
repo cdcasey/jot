@@ -48,6 +48,24 @@ type Skill struct {
 	UpdatedAt   string   `json:"updated_at"`
 }
 
+type Schedule struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	CronExpr  string `json:"cron_expr"`
+	Prompt    string `json:"prompt"`
+	Enabled   bool   `json:"enabled"`
+	LastRun   string `json:"last_run,omitempty"`
+	CreatedAt string `json:"created_at"`
+}
+
+type Reminder struct {
+	ID        int64  `json:"id"`
+	Prompt    string `json:"prompt"`
+	FireAt    string `json:"fire_at"`
+	Fired     bool   `json:"fired"`
+	CreatedAt string `json:"created_at"`
+}
+
 // ListThings returns things, optionally filtered by status, priority, or tag.
 func (d *DB) ListThings(status, priority, tag string) ([]Thing, error) {
 	query := `SELECT id, title, COALESCE(notes,''), status, priority,

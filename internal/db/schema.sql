@@ -44,3 +44,21 @@ CREATE TABLE IF NOT EXISTS skills (
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS schedules (
+	id INTEGER PRIMARY KEY,
+  name TEXT UNIQUE NOT NULL,
+  cron_expr TEXT NOT NULL,
+  prompt TEXT NOT NULL,
+  enabled INTEGER DEFAULT 1,
+  last_run TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS reminders (
+  id INTEGER PRIMARY KEY,
+  prompt TEXT NOT NULL,
+  fire_at TEXT NOT NULL,
+  fired INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+);
