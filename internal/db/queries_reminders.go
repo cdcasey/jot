@@ -20,7 +20,7 @@ func (d *DB) CreateReminder(prompt, fireAt string) (int64, error) {
 // ListPendingReminders returns unfired reminders whose fire_at is now or past.
 func (d *DB) ListPendingReminders() ([]Reminder, error) {
 	rows, err := d.conn.Query(
-		"SELECT id, prompt, fire_at, fired, created_at FROM reminders WHERE fired = 0 AND fire_at <= datetime('nfire_at ASC",
+		"SELECT id, prompt, fire_at, fired, created_at FROM reminders WHERE fired = 0 AND fire_at <= datetime('now') ORDER BY fire_at ASC",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing pending reminders: %w", err)
@@ -32,7 +32,7 @@ func (d *DB) ListPendingReminders() ([]Reminder, error) {
 // ListUpcomingReminders returns unfired reminders that haven't fired yet.
 func (d *DB) ListUpcomingReminders() ([]Reminder, error) {
 	rows, err := d.conn.Query(
-		"SELECT id, prompt, fire_at, fired, created_at FROM reminders WHERE fired = 0 AND fire_at > datetime('nofire_at ASC",
+		"SELECT id, prompt, fire_at, fired, created_at FROM reminders WHERE fired = 0 AND fire_at > datetime('now') ORDER BY fire_at ASC",
 	)
 	if err != nil {
 		return nil, fmt.Errorf("listing upcoming reminders: %w", err)
