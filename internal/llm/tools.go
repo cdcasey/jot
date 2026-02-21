@@ -53,7 +53,7 @@ var AgentTools = []Tool{
 			"content":    prop("string", "What to remember. Write a clear, specific sentence."),
 			"category":   prop("string", "One of: observation, decision, blocker, preference, event, reflection"),
 			"tags":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Freeform tags for retrieval"},
-			"thing_id": prop("integer", "Optional thing ID to link to"),
+			"thing_id":   prop("integer", "Optional thing ID to link to"),
 			"expires_at": prop("string", "Optional expiry datetime (YYYY-MM-DD HH:MM:SS). Omit for permanent memories."),
 		}, "content", "category"),
 	},
@@ -61,12 +61,12 @@ var AgentTools = []Tool{
 		Name:        "search_memories",
 		Description: "Search past memories by text, category, tag, or project. Returns matches ordered by recency. Use this to recall context before answering questions.",
 		Parameters: obj(map[string]any{
-			"query":      prop("string", "Text to search for in memory content"),
-			"category":   prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection"),
-			"tag":        prop("string", "Filter by tag"),
+			"query":    prop("string", "Text to search for in memory content"),
+			"category": prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection"),
+			"tag":      prop("string", "Filter by tag"),
 			"thing_id": prop("integer", "Filter by thing ID"),
-			"since":      prop("string", "Only memories after this date (YYYY-MM-DD)"),
-			"limit":      prop("integer", "Max results (default 10)"),
+			"since":    prop("string", "Only memories after this date (YYYY-MM-DD)"),
+			"limit":    prop("integer", "Max results (default 10)"),
 		}),
 	},
 	{
@@ -137,6 +137,57 @@ var AgentTools = []Tool{
 		Parameters: objReq(map[string]any{
 			"name": prop("string", "Skill name"),
 		}, "name"),
+	},
+	{
+		Name:        "list_schedules",
+		Description: "List all recurring scheduled tasks.",
+		Parameters:  obj(nil),
+	},
+	{
+		Name:        "create_schedule",
+		Description: "Create a recurring scheduled task with a cron expression.",
+		Parameters: objReq(map[string]any{
+			"name":      prop("string", "Unique name slug, e.g. 'weekly-review'"),
+			"cron_expr": prop("string", "Cron expression, e.g. '0 9 * * *' for daily 9am"),
+			"prompt":    prop("string", "What to tell the agent when this schedule fires"),
+		}, "name", "cron_expr", "prompt"),
+	},
+	{
+		Name:        "update_schedule",
+		Description: "Update a schedule by name. Can change cron_expr, prompt, or enabled.",
+		Parameters: objReq(map[string]any{
+			"name":      prop("string", "Schedule name to update"),
+			"cron_expr": prop("string", "New cron expression"),
+			"prompt":    prop("string", "New prompt"),
+			"enabled":   prop("boolean", "true to enable, false to disable"),
+		}, "name"),
+	},
+	{
+		Name:        "delete_schedule",
+		Description: "Delete a recurring schedule by name.",
+		Parameters: objReq(map[string]any{
+			"name": prop("string", "Schedule name to delete"),
+		}, "name"),
+	},
+	{
+		Name:        "create_reminder",
+		Description: "Create a one-shot reminder that fires at a specific UTC datetime. Always call get_time first to calculate fire_at.",
+		Parameters: objReq(map[string]any{
+			"prompt":  prop("string", "What to tell the agent when this reminder fires"),
+			"fire_at": prop("string", "UTC datetime to fire: 'YYYY-MM-DD HH:MM:SS'"),
+		}, "prompt", "fire_at"),
+	},
+	{
+		Name:        "list_reminders",
+		Description: "List upcoming unfired reminders.",
+		Parameters:  obj(nil),
+	},
+	{
+		Name:        "cancel_reminder",
+		Description: "Cancel a pending reminder by ID.",
+		Parameters: objReq(map[string]any{
+			"id": prop("integer", "Reminder ID to cancel"),
+		}, "id"),
 	},
 }
 
