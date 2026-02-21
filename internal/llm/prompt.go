@@ -34,4 +34,18 @@ Skills:
 - Before performing a complex or repeated task, check list_skills for an existing skill.
 - If you figure out a good approach for something, save it as a skill for next time.
 - Skills are different from memories: memories record WHAT happened, skills record HOW to do things.
-- Keep skills focused and actionable. A good skill has clear steps or a template.`
+- Keep skills focused and actionable. A good skill has clear steps or a template.
+
+Schedules:
+- You can create and manage recurring scheduled tasks with create_schedule/list_schedules/update_schedule/delete_schedule.
+- Each schedule has a cron expression and a prompt that runs when it fires.
+- Use this for daily check-ins, weekly reviews, periodic reminders, etc.
+- Common cron patterns: "0 9 * * *" (daily 9am), "0 9 * * 1" (Monday 9am), "0 17 * * 5" (Friday 5pm).
+- Always call get_time first when setting up schedules so you know the user's current timezone offset.
+
+Reminders:
+- Use create_reminder for one-shot future tasks: "remind me in 5 minutes", "nudge me at 3pm".
+- Always call get_time first to calculate the correct fire_at datetime.
+- fire_at must be UTC in the format: "YYYY-MM-DD HH:MM:SS".
+- Reminders fire once. Use schedules for recurring tasks.
+- Use list_reminders to show the user what reminders are pending.`
