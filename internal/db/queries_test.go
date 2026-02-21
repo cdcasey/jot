@@ -515,3 +515,219 @@ func TestCreateSkillDuplicateName(t *testing.T) {
 		t.Error("expected error creating duplicate skill name, got nil")
 	}
 }
+
+// --- Schedules ---
+
+func TestCreateAndListSchedules(t *testing.T) {
+	d := openTestDB(t)
+
+	id, err := d.CreateSchedule("daily-review", "0 9 * * *", "Do a daily review.")
+	if err != nil {
+		t.Fatalf("CreateSchedule: %v", err)
+	}
+
+	schedules, err := d.ListSchedules(false)
+	if err != nil {
+		t.Fatalf("ListSchedules: %v", err)
+	}
+	if len(schedules) != 1 {
+		t.Fatalf("expected 1 schedule, got %d", len(schedules))
+	}
+	s := schedules[0]
+	if s.ID != id {
+		t.Errorf("expected ID %d, got %d", id, s.ID)
+	}
+	if s.Name != "daily-review" {
+		t.Errorf("expected name %q, got %q", "daily-review", s.Name)
+	}
+	if s.CronExpr != "0 9 * * *" {
+		t.Errorf("expected cron %q, got %q", "0 9 * * *", s.CronExpr)
+	}
+	if !s.Enabled {
+		t.Error("expected schedule to be enabled by default")
+	}
+}
+
+func TestCreateScheduleDuplicateName(t *testing.T) {
+	d := openTestDB(t)
+
+	_, err := d.CreateSchedule("same-name", "0 9 * * *", "prompt")
+	if err != nil {
+		t.Fatalf("first CreateSchedule: %v", err)
+	}
+	_, err = d.CreateSchedule("same-name", "0 10 * * *", "other prompt")
+	if err == nil {
+		t.Error("expected error on duplicate schedule name, got nil")
+	}
+}
+
+func TestUpdateScheduleEnableDisable(t *testing.T) {
+	d := openTestDB(t)
+
+	id, _ := d.CreateSchedule("toggle-me", "0 9 * * *", "prompt")
+
+	// Disable it
+	err := d.UpdateSchedule(id, map[string]any{"enabled": 0})
+	if err != nil {
+		t.Fatalf("UpdateSchedule(disable): %v", err)
+	}
+
+	// Should not appear in enabledOnly list
+	schedules, _ := d.ListSchedules(true)
+	if len(schedules) != 0 {
+		t.Errorf("expected 0 enabled schedules, got %d", len(schedules))
+	}
+
+	// Re-enable
+	d.UpdateSchedule(id, map[string]any{"enabled": 1})
+	schedules, _ = d.ListSchedules(true)
+	if len(schedules) != 1 {
+		t.Errorf("expected 1 enabled schedule after re-enable, got %d", len(schedules))
+	}
+}
+
+func TestRecordScheduleRun(t *testing.T) {
+	d := openTestDB(t)
+
+	id, _ := d.CreateSchedule("run-me", "0 9 * * *", "prompt")
+
+	schedules, _ := d.ListSchedules(false)
+	if schedules[0].LastRun != "" {
+		t.Errorf("expected empty last_run, got %q", schedules[0].LastRun)
+	}
+
+	err := d.RecordScheduleRun(id)
+	if err != nil {
+		t.Fatalf("RecordScheduleRun: %v", err)
+	}
+
+	schedules, _ = d.ListSchedules(false)
+	if schedules[0].LastRun == "" {
+		t.Error("expected last_run to be set after run")
+	}
+}
+
+func TestDeleteSchedule(t *testing.T) {
+	d := openTestDB(t)
+
+	d.CreateSchedule("to-delete", "0 9 * * *", "prompt")
+
+	err := d.DeleteSchedule("to-delete")
+	if err != nil {
+		t.Fatalf("DeleteSchedule: %v", err)
+	}
+
+	schedules, _ := d.ListSchedules(false)
+	if len(schedules) != 0 {
+		t.Errorf("expected 0 schedules after delete, got %d", len(schedules))
+	}
+}
+
+// --- Reminders ---
+
+func TestCreateAndListReminders(t *testing.T) {
+	d := openTestDB(t)
+
+	future := time.Now().UTC().Add(time.Hour).Format(time.DateTime)
+	id, err := d.CreateReminder("check the build", future)
+	if err != nil {
+		t.Fatalf("CreateReminder: %v", err)
+	}
+
+	reminders, err := d.ListUpcomingReminders()
+	if err != nil {
+		t.Fatalf("ListUpcomingReminders: %v", err)
+	}
+	if len(reminders) != 1 {
+		t.Fatalf("expected 1 reminder, got %d", len(reminders))
+	}
+	r := reminders[0]
+	if r.ID != id {
+		t.Errorf("expected ID %d, got %d", id, r.ID)
+	}
+	if r.Prompt != "check the build" {
+		t.Errorf("expected prompt %q, got %q", "check the build", r.Prompt)
+	}
+	if r.Fired {
+		t.Error("expected reminder to not be fired")
+	}
+}
+
+func TestListPendingReminders(t *testing.T) {
+	d := openTestDB(t)
+
+	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
+	future := time.Now().UTC().Add(time.Hour).Format(time.DateTime)
+
+	d.CreateReminder("due now", past)
+	d.CreateReminder("not yet", future)
+
+	pending, err := d.ListPendingReminders()
+	if err != nil {
+		t.Fatalf("ListPendingReminders: %v", err)
+	}
+	if len(pending) != 1 {
+		t.Fatalf("expected 1 pending reminder, got %d", len(pending))
+	}
+	if pending[0].Prompt != "due now" {
+		t.Errorf("expected %q, got %q", "due now", pending[0].Prompt)
+	}
+}
+
+func TestListUpcomingReminders(t *testing.T) {
+	d := openTestDB(t)
+
+	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
+	future := time.Now().UTC().Add(time.Hour).Format(time.DateTime)
+
+	d.CreateReminder("already due", past)
+	d.CreateReminder("upcoming", future)
+
+	upcoming, err := d.ListUpcomingReminders()
+	if err != nil {
+		t.Fatalf("ListUpcomingReminders: %v", err)
+	}
+	if len(upcoming) != 1 {
+		t.Fatalf("expected 1 upcoming reminder, got %d", len(upcoming))
+	}
+	if upcoming[0].Prompt != "upcoming" {
+		t.Errorf("expected %q, got %q", "upcoming", upcoming[0].Prompt)
+	}
+}
+
+func TestMarkReminderFired(t *testing.T) {
+	d := openTestDB(t)
+
+	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
+	id, _ := d.CreateReminder("fire me", past)
+
+	err := d.MarkReminderFired(id)
+	if err != nil {
+		t.Fatalf("MarkReminderFired: %v", err)
+	}
+
+	pending, _ := d.ListPendingReminders()
+	if len(pending) != 0 {
+		t.Errorf("expected 0 pending after firing, got %d", len(pending))
+	}
+}
+
+func TestPendingRemindersExcludesFired(t *testing.T) {
+	d := openTestDB(t)
+
+	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
+	id, _ := d.CreateReminder("already fired", past)
+	d.MarkReminderFired(id)
+	d.CreateReminder("also due but not fired", past)
+
+	pending, err := d.ListPendingReminders()
+	if err != nil {
+		t.Fatalf("ListPendingReminders: %v", err)
+	}
+	if len(pending) != 1 {
+		t.Fatalf("expected 1 pending, got %d", len(pending))
+	}
+	if pending[0].Prompt != "also due but not fired" {
+		t.Errorf("expected unfired reminder, got %q", pending[0].Prompt)
+	}
+}

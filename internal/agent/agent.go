@@ -267,6 +267,87 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 			result = map[string]any{"status": "deleted"}
 		}
 
+	case "list_schedules":
+		result, err = a.db.ListSchedules(false)
+
+	case "create_schedule":
+		name, _ := getString(params, "name")
+		cronExpr, _ := getString(params, "cron_expr")
+		prompt, _ := getString(params, "prompt")
+		id, e := a.db.CreateSchedule(name, cronExpr, prompt)
+		if e != nil {
+			err = e
+		} else {
+			result = map[string]any{"id": id, "status": "created"}
+		}
+
+	// ListSchedules works for now. Create GetScheduleByName if schedules gets too big.
+	case "update_schedule":
+		name, _ := getString(params, "name")
+		sched, e := a.db.ListSchedules(false)
+		if e != nil {
+			err = e
+			break
+		}
+		var schedID int64
+		for _, s := range sched {
+			if s.Name == name {
+				schedID = s.ID
+				break
+			}
+		}
+		if schedID == 0 {
+			result = map[string]any{"error": "schedule not found: " + name}
+			break
+		}
+		fields := make(map[string]any)
+		if v, ok := getString(params, "cron_expr"); ok {
+			fields["cron_expr"] = v
+		}
+		if v, ok := getString(params, "prompt"); ok {
+			fields["prompt"] = v
+		}
+		if v, ok := params["enabled"]; ok {
+			if b, ok := v.(bool); ok {
+				if b {
+					fields["enabled"] = 1
+				} else {
+					fields["enabled"] = 0
+				}
+			}
+		}
+		err = a.db.UpdateSchedule(schedID, fields)
+		if err == nil {
+			result = map[string]any{"status": "updated"}
+		}
+
+	case "delete_schedule":
+		name, _ := getString(params, "name")
+		err = a.db.DeleteSchedule(name)
+		if err == nil {
+			result = map[string]any{"status": "deleted"}
+		}
+
+	case "create_reminder":
+		prompt, _ := getString(params, "prompt")
+		fireAt, _ := getString(params, "fire_at")
+		id, e := a.db.CreateReminder(prompt, fireAt)
+		if e != nil {
+			err = e
+		} else {
+			result = map[string]any{"id": id, "status": "created"}
+		}
+
+	case "list_reminders":
+		result, err = a.db.ListUpcomingReminders()
+
+	case "cancel_reminder":
+		id, _ := getInt(params, "id")
+		err = a.db.MarkReminderFired(id)
+		if err == nil {
+			result = map[string]any{"status": "cancelled"}
+		}
+
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}
 	}

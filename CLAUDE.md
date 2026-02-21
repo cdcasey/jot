@@ -33,7 +33,14 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
 /internal/db/
     schema.sql               # SQLite schema
     db.go                    # Connection, migrations
-    queries.go               # All database operations
+    queries.go               # Struct type definitions
+    queries_helpers.go       # Shared helpers (updateRow, nullStr, allowedColumns)
+    queries_things.go        # Things + Summary queries
+    queries_notes.go         # Notes queries
+    queries_memories.go      # Memories + check-in queries
+    queries_skills.go        # Skills queries
+    queries_schedule.go      # Schedules queries
+    queries_reminders.go     # Reminders queries
 /internal/llm/
     client.go                # LLMClient interface
     provider.go              # Provider factory (NewClient)
@@ -81,6 +88,45 @@ CREATE TABLE notes (
     value TEXT NOT NULL,
     updated_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE memories (
+    id INTEGER PRIMARY KEY,
+    content TEXT NOT NULL,
+    category TEXT NOT NULL DEFAULT 'observation',
+    tags TEXT,                         -- JSON array
+    thing_id INTEGER REFERENCES things(id),
+    source TEXT NOT NULL DEFAULT 'agent',
+    expires_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE skills (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags TEXT,                         -- JSON array
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE schedules (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    cron_expr TEXT NOT NULL,
+    prompt TEXT NOT NULL,
+    enabled INTEGER DEFAULT 1,
+    last_run TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE reminders (
+    id INTEGER PRIMARY KEY,
+    prompt TEXT NOT NULL,
+    fire_at TEXT NOT NULL,             -- UTC datetime: "YYYY-MM-DD HH:MM:SS"
+    fired INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
 ```
 
 ## LLM Tools
@@ -104,6 +150,17 @@ The agent has exactly these tools - no more, no less:
 ### Utility Tools
 - `get_time` - Get the current system time
 - `create_skill` / `get_skill` / `list_skills` / `update_skill` / `delete_skill` - Manage reusable skills
+
+### Schedule Tools
+- `list_schedules` - List all recurring scheduled tasks
+- `create_schedule` - Create a recurring task (name, cron_expr, prompt required)
+- `update_schedule` - Update cron_expr, prompt, or enabled flag by name
+- `delete_schedule` - Delete a schedule by name
+
+### Reminder Tools
+- `create_reminder` - Create a one-shot reminder (prompt, fire_at required; always call get_time first)
+- `list_reminders` - List upcoming unfired reminders
+- `cancel_reminder` - Cancel a reminder by id
 
 ## System Prompt Guidelines
 
@@ -237,6 +294,9 @@ go build -o agent ./cmd/agent
 ### Phase 3: Scheduling
 - [x] Internal cron scheduler
 - [x] Check-in logic (build context, send to LLM, post to Discord)
+- [x] DB-driven multi-schedule cron (schedules table, agent-manageable)
+- [x] One-shot reminders with 60s polling ticker
+- [x] CHECK_IN_CRON demoted to seed fallback
 
 ### Phase 4: Polish
 - [x] Remaining tools (ideas, notes)
