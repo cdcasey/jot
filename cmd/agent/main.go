@@ -97,18 +97,16 @@ func runCLI(ag *agent.Agent) {
 }
 
 func runBot(cfg *config.Config, database *db.DB, ag *agent.Agent) {
-	bot, err := discord.NewBot(cfg.DiscordToken, ag)
+	bot, err := discord.NewBot(cfg.DiscordToken, ag, database)
 	if err != nil {
 		log.Fatalf("failed to start Discord bot: %v", err)
 	}
 	defer bot.Close()
 
-	if cfg.DiscordWebhook != "" {
-		sched := scheduler.New(cfg.DiscordWebhook, database, ag)
-		sched.SeedDefaultSchedule(cfg.CheckInCron)
-		sched.Start()
-		defer sched.Stop()
-	}
+	sched := scheduler.New(database, ag, cfg.DiscordWebhook, bot.SendDM)
+	sched.SeedDefaultSchedule(cfg.CheckInCron)
+	sched.Start()
+	defer sched.Stop()
 
 	log.Println("bot is running. Press Ctrl+C to exit.")
 	sig := make(chan os.Signal, 1)

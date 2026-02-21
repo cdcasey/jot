@@ -36,6 +36,10 @@ func (b *Bot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	if isDM {
+		_ = b.db.SetNote("discord_user_id", m.Author.ID)
+	}
+
 	content := strings.TrimSpace(m.Content)
 	// Strip mention from message
 	content = strings.TrimSpace(stripMention(content, s.State.User.ID))

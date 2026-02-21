@@ -20,16 +20,18 @@ type Scheduler struct {
 	webhookURL string
 	db         *db.DB
 	agent      *agent.Agent
+	dmSend     func(userID, content string) error
 	mu         sync.Mutex
 	entryIDs   map[int64]cron.EntryID // scheduleID -> cron entry
 }
 
-func New(webhookURL string, database *db.DB, ag *agent.Agent) *Scheduler {
+func New(database *db.DB, ag *agent.Agent, webhookURL string, dmSend func(userID, content string) error) *Scheduler {
 	return &Scheduler{
 		cron:       cron.New(),
 		webhookURL: webhookURL,
 		db:         database,
 		agent:      ag,
+		dmSend:     dmSend,
 		entryIDs:   make(map[int64]cron.EntryID),
 	}
 }
@@ -138,9 +140,7 @@ func (s *Scheduler) runSchedule(sched db.Schedule) {
 		log.Printf("scheduler[%s]: storing check-in: %v", sched.Name, err)
 	}
 
-	if err := postWebhook(s.webhookURL, reply); err != nil {
-		log.Printf("scheduler[%s]: posting webhook: %v", sched.Name, err)
-	}
+	s.deliver(fmt.Sprintf("scheduler[%s]", sched.Name), reply)
 
 	log.Printf("scheduler[%s]: completed", sched.Name)
 }
@@ -162,11 +162,31 @@ func (s *Scheduler) fireReminders() {
 		if err := s.db.MarkReminderFired(r.ID); err != nil {
 			log.Printf("scheduler: marking reminder %d fired: %v", r.ID, err)
 		}
-		if err := postWebhook(s.webhookURL, reply); err != nil {
-			log.Printf("scheduler: reminder %d webhook error: %v", r.ID, err)
-		}
+		s.deliver(fmt.Sprintf("reminder[%d]", r.ID), reply)
 		log.Printf("scheduler: fired reminder %d", r.ID)
 	}
+}
+
+func (s *Scheduler) deliver(label, content string) {
+	// Try DM first
+	if s.dmSend != nil {
+		note, err := s.db.GetNote("discord_user_id")
+		if err == nil && note != "" {
+			if err := s.dmSend(note, content); err != nil {
+				log.Printf("%s: DM send failed: %v", label, err)
+			} else {
+				return
+			}
+		}
+	}
+	// Fall back to webhook
+	if s.webhookURL != "" {
+		if err := postWebhook(s.webhookURL, content); err != nil {
+			log.Printf("%s: webhook failed: %v", label, err)
+		}
+		return
+	}
+	log.Printf("%s: no delivery method available (no DM user and no webhook)", label)
 }
 
 func postWebhook(url, content string) error {
