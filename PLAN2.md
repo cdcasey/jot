@@ -6,7 +6,7 @@ Work through each phase in order. Each phase is self-contained and testable befo
 
 ---
 
-## Phase 1: Skills System + Time Awareness
+## Phase 1: Skills System + Time Awareness ✓ COMPLETE
 
 ### 1.0 `get_time` Tool
 
@@ -218,7 +218,7 @@ This replaces the current in-memory `histories` map as the primary continuity me
 
 ---
 
-## Phase 3: Multi-Schedule Cron + Reminders
+## Phase 3: Multi-Schedule Cron + Reminders ✓ COMPLETE
 
 Replace the single `CHECK_IN_CRON` with a schedule system the agent can manage, and add one-shot reminders for "remind me in 5 minutes" style requests.
 
