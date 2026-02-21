@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/chris/jot/internal/agent"
 	"github.com/chris/jot/internal/db"
@@ -18,27 +20,42 @@ type Scheduler struct {
 	webhookURL string
 	db         *db.DB
 	agent      *agent.Agent
+	mu         sync.Mutex
+	entryIDs   map[int64]cron.EntryID // scheduleID -> cron entry
 }
 
-func New(schedule, webhookURL string, database *db.DB, ag *agent.Agent) *Scheduler {
-	c := cron.New()
-	s := &Scheduler{
-		cron:       c,
+func New(webhookURL string, database *db.DB, ag *agent.Agent) *Scheduler {
+	return &Scheduler{
+		cron:       cron.New(),
 		webhookURL: webhookURL,
 		db:         database,
 		agent:      ag,
+		entryIDs:   make(map[int64]cron.EntryID),
 	}
-
-	_, err := c.AddFunc(schedule, s.runCheckIn)
-	if err != nil {
-		log.Printf("invalid cron schedule %q: %v", schedule, err)
-	}
-
-	return s
 }
 
 func (s *Scheduler) Start() {
+	s.loadSchedules()
 	s.cron.Start()
+
+	// Reload schedules every 5 minutes to pick up agent-created changes
+	go func() {
+		t := time.NewTicker(5 * time.Minute)
+		defer t.Stop()
+		for range t.C {
+			s.loadSchedules()
+		}
+	}()
+
+	// Poll for due reminders every 60 seconds
+	go func() {
+		t := time.NewTicker(60 * time.Second)
+		defer t.Stop()
+		for range t.C {
+			s.fireReminders()
+		}
+	}()
+
 	log.Println("scheduler started")
 }
 
@@ -46,42 +63,110 @@ func (s *Scheduler) Stop() {
 	s.cron.Stop()
 }
 
-func (s *Scheduler) runCheckIn() {
+// SeedDefaultSchedule inserts a morning check-in if the schedules table is empty.
+func (s *Scheduler) SeedDefaultSchedule(cronExpr string) {
+	schedules, err := s.db.ListSchedules(false)
+	if err != nil {
+		log.Printf("scheduler: checking schedules: %v", err)
+		return
+	}
+	if len(schedules) == 0 && cronExpr != "" {
+		_, err := s.db.CreateSchedule(
+			"morning-checkin",
+			cronExpr,
+			"Perform a morning check-in. Summarize pending work, mention overdue items, suggest priorities for the day.",
+		)
+		if err != nil {
+			log.Printf("scheduler: seeding default schedule: %v", err)
+		} else {
+			log.Printf("scheduler: seeded default schedule with cron %q", cronExpr)
+		}
+	}
+}
+
+func (s *Scheduler) loadSchedules() {
+	schedules, err := s.db.ListSchedules(true)
+	if err != nil {
+		log.Printf("scheduler: loading schedules: %v", err)
+		return
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// Remove all existing entries and re-register
+	// Fine for this scale. Actual diffing would be way more complex.
+	for _, entryID := range s.entryIDs {
+		s.cron.Remove(entryID)
+	}
+	s.entryIDs = make(map[int64]cron.EntryID)
+
+	for _, sched := range schedules {
+		sched := sched // capture for closure
+		entryID, err := s.cron.AddFunc(sched.CronExpr, func() {
+			s.runSchedule(sched)
+		})
+		if err != nil {
+			log.Printf("scheduler: invalid cron %q for schedule %q: %v", sched.CronExpr, sched.Name, err)
+			continue
+		}
+		s.entryIDs[sched.ID] = entryID
+	}
+
+	log.Printf("scheduler: loaded %d schedule(s)", len(s.entryIDs))
+}
+
+func (s *Scheduler) runSchedule(sched db.Schedule) {
 	prompt, err := agent.BuildCheckInPrompt(s.db)
 	if err != nil {
-		log.Printf("check-in error building prompt: %v", err)
+		log.Printf("scheduler[%s]: building prompt: %v", sched.Name, err)
 		return
 	}
+	fullPrompt := prompt + "\n\n" + sched.Prompt
 
-	reply, _, err := s.agent.Run(context.Background(), nil, prompt)
+	reply, _, err := s.agent.Run(context.Background(), nil, fullPrompt)
 	if err != nil {
-		log.Printf("check-in error from agent: %v", err)
+		log.Printf("scheduler[%s]: agent error: %v", sched.Name, err)
 		return
 	}
 
-	// Store the check-in
+	if err := s.db.RecordScheduleRun(sched.ID); err != nil {
+		log.Printf("scheduler[%s]: recording run: %v", sched.Name, err)
+	}
+
 	if _, err := s.db.CreateCheckIn(reply); err != nil {
-		log.Printf("check-in error storing: %v", err)
+		log.Printf("scheduler[%s]: storing check-in: %v", sched.Name, err)
 	}
 
-	// Record check-in as a system memory
-	memContent := reply
-	if len(memContent) > 200 {
-		memContent = memContent[:200]
-	}
-	if _, err := s.db.SaveMemory(
-		fmt.Sprintf("Check-in completed. Summary: %s", memContent),
-		"event", "system", []string{"check-in"}, nil, "",
-	); err != nil {
-		log.Printf("check-in error saving memory: %v", err)
-	}
-
-	// Post to Discord webhook
 	if err := postWebhook(s.webhookURL, reply); err != nil {
-		log.Printf("check-in error posting webhook: %v", err)
+		log.Printf("scheduler[%s]: posting webhook: %v", sched.Name, err)
 	}
 
-	log.Println("check-in completed")
+	log.Printf("scheduler[%s]: completed", sched.Name)
+}
+
+func (s *Scheduler) fireReminders() {
+	pending, err := s.db.ListPendingReminders()
+	if err != nil {
+		log.Printf("scheduler: listing reminders: %v", err)
+		return
+	}
+	for _, r := range pending {
+		r := r
+		msg := fmt.Sprintf("A reminder you set: %s", r.Prompt)
+		reply, _, err := s.agent.Run(context.Background(), nil, msg)
+		if err != nil {
+			log.Printf("scheduler: reminder %d agent error: %v", r.ID, err)
+			continue
+		}
+		if err := s.db.MarkReminderFired(r.ID); err != nil {
+			log.Printf("scheduler: marking reminder %d fired: %v", r.ID, err)
+		}
+		if err := postWebhook(s.webhookURL, reply); err != nil {
+			log.Printf("scheduler: reminder %d webhook error: %v", r.ID, err)
+		}
+		log.Printf("scheduler: fired reminder %d", r.ID)
+	}
 }
 
 func postWebhook(url, content string) error {
