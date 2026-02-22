@@ -179,8 +179,10 @@ var AgentTools = []Tool{
 	},
 	{
 		Name:        "list_reminders",
-		Description: "List upcoming unfired reminders.",
-		Parameters:  obj(nil),
+		Description: "List reminders. By default only shows upcoming unfired reminders. Set include_fired to true to include past/fired reminders.",
+		Parameters: obj(map[string]any{
+			"include_fired": prop("boolean", "Include fired/past reminders (default false)"),
+		}),
 	},
 	{
 		Name:        "cancel_reminder",

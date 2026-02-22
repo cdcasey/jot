@@ -339,7 +339,12 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		}
 
 	case "list_reminders":
-		result, err = a.db.ListUpcomingReminders()
+		includeFired, _ := params["include_fired"].(bool)
+		if includeFired {
+			result, err = a.db.ListAllReminders()
+		} else {
+			result, err = a.db.ListUpcomingReminders()
+		}
 
 	case "cancel_reminder":
 		id, _ := getInt(params, "id")
