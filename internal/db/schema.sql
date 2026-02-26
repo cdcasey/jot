@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS memories (
     thing_id INTEGER REFERENCES things(id),
     source TEXT NOT NULL DEFAULT 'agent',
     expires_at TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );
 
 -- FTS5 full-text search index for memories

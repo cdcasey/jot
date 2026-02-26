@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 // CreateCheckIn stores a check-in summary.
@@ -152,30 +151,7 @@ func (d *DB) GetRecentMemoriesForCheckIn(days int) ([]Memory, error) {
 // UpdateMemory updates specific fields on a memory by ID.
 // Allowed fields: content, category, tags, expires_at.
 func (d *DB) UpdateMemory(id int64, fields map[string]any) error {
-	if len(fields) == 0 {
-		return nil
-	}
-	allowed := map[string]bool{"content": true, "category": true, "tags": true, "expires_at": true}
-	var setClauses []string
-	var args []any
-	for col, val := range fields {
-		if !allowed[col] {
-			return fmt.Errorf("disallowed column %q for memories", col)
-		}
-		setClauses = append(setClauses, col+" = ?")
-		args = append(args, val)
-	}
-	args = append(args, id)
-	query := fmt.Sprintf("UPDATE memories SET %s WHERE id = ?", strings.Join(setClauses, ", "))
-	res, err := d.conn.Exec(query, args...)
-	if err != nil {
-		return fmt.Errorf("updating memory %d: %w", id, err)
-	}
-	n, _ := res.RowsAffected()
-	if n == 0 {
-		return fmt.Errorf("memory %d not found", id)
-	}
-	return nil
+	return d.updateRow("memories", id, fields)
 }
 
 // DeleteMemory deletes a memory by ID.
