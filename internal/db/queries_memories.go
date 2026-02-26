@@ -46,10 +46,22 @@ func (d *DB) SaveMemory(content, category, source string, tags []string, thingID
 }
 
 // SearchMemories searches memories by text query, category, tag, thing, and date.
+// When a text query is provided, it uses FTS5 for ranked full-text search.
+// Falls back to LIKE if FTS fails (defensive).
 func (d *DB) SearchMemories(query, category, tag string, thingID *int64, since string, limit int) ([]Memory, error) {
 	if limit <= 0 {
 		limit = 10
 	}
+
+	// Use FTS5 when a text query is provided.
+	if query != "" {
+		results, err := d.searchMemoriesFTS(query, category, tag, thingID, since, limit)
+		if err == nil {
+			return results, nil
+		}
+		// FTS failed — fall through to LIKE search.
+	}
+
 	q := "SELECT id, content, category, COALESCE(tags,'[]'), thing_id, source, COALESCE(expires_at,''), created_at FROM memories WHERE (expires_at IS NULL OR expires_at > datetime('now'))"
 	var args []any
 	if query != "" {
@@ -73,6 +85,36 @@ func (d *DB) SearchMemories(query, category, tag string, thingID *int64, since s
 		args = append(args, since)
 	}
 	q += " ORDER BY created_at DESC LIMIT ?"
+	args = append(args, limit)
+	return d.scanMemories(q, args...)
+}
+
+// searchMemoriesFTS performs a full-text search using the FTS5 index, joined
+// back to the memories table for full rows and additional filters.
+func (d *DB) searchMemoriesFTS(query, category, tag string, thingID *int64, since string, limit int) ([]Memory, error) {
+	q := `SELECT m.id, m.content, m.category, COALESCE(m.tags,'[]'), m.thing_id, m.source, COALESCE(m.expires_at,''), m.created_at
+		FROM memories_fts f
+		JOIN memories m ON m.id = f.rowid
+		WHERE memories_fts MATCH ?
+		  AND (m.expires_at IS NULL OR m.expires_at > datetime('now'))`
+	args := []any{query}
+	if category != "" {
+		q += " AND m.category = ?"
+		args = append(args, category)
+	}
+	if tag != "" {
+		q += " AND m.tags LIKE ?"
+		args = append(args, "%\""+tag+"\"%")
+	}
+	if thingID != nil {
+		q += " AND m.thing_id = ?"
+		args = append(args, *thingID)
+	}
+	if since != "" {
+		q += " AND m.created_at >= ?"
+		args = append(args, since)
+	}
+	q += " ORDER BY rank LIMIT ?"
 	args = append(args, limit)
 	return d.scanMemories(q, args...)
 }
