@@ -24,7 +24,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
 - **Database:** SQLite (via `modernc.org/sqlite` - pure Go, no CGO)
 - **LLM:** Anthropic Claude API (official Go SDK: `github.com/anthropic-ai/anthropic-sdk-go`)
 - **Discord:** `github.com/bwmarrin/discordgo`
-- **Config:** Environment variables or `.env` file
+- **Config:** `~/.jot/config` (dotenv format), `.env` override, or environment variables
 
 ## Project Structure
 
@@ -56,6 +56,8 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     handlers.go              # Message handlers
 /internal/scheduler/
     scheduler.go             # Cron for check-ins
+/internal/service/
+    service.go               # launchd service management (install/start/stop)
 /config/
     config.go                # Environment/config loading
 ```
@@ -179,7 +181,11 @@ The agent should:
 - Not be annoying - check-ins should be useful, not nagging
 - Admit when it doesn't know something rather than making things up
 
-## Environment Variables
+## Configuration
+
+Config is loaded in priority order: environment variables > `.env` (local dev) > `~/.jot/config` (installed service).
+
+All files use dotenv format (`KEY=value`). The `~/.jot/config` file is seeded from `.env` on first `make install`.
 
 ```
 # LLM Provider (choose one)
@@ -277,10 +283,25 @@ Anthropic and OpenAI have slightly different tool/function calling formats. The 
 go run ./cmd/agent
 
 # Build
-go build -o agent ./cmd/agent
+make build
 
-# Run
-./agent
+# Run in foreground
+make run
+# or: ./jotd
+# or: ./jotd run
+
+# Install as login service (copies to /usr/local/bin, sets up launchd)
+make install
+
+# Service management (after install)
+jotd status
+jotd stop
+jotd start
+jotd restart
+jotd logs
+
+# Uninstall
+make uninstall
 ```
 
 ## Development Phases
@@ -314,7 +335,7 @@ go build -o agent ./cmd/agent
 - [x] Better context window management
 - [x] Conversation history (how many messages to include)
 - [ ] Markdown export command for human review
-- [ ] Start on startup or login
+- [x] Start on startup or login (launchd service via `make install`)
 
 ## Code Style
 

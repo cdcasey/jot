@@ -16,9 +16,45 @@ import (
 	"github.com/chris/jot/internal/discord"
 	"github.com/chris/jot/internal/llm"
 	"github.com/chris/jot/internal/scheduler"
+	"github.com/chris/jot/internal/service"
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		if err := runCommand(os.Args[1]); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
+	run()
+}
+
+func runCommand(cmd string) error {
+	switch cmd {
+	case "install":
+		return service.Install()
+	case "uninstall":
+		return service.Uninstall()
+	case "start":
+		return service.Start()
+	case "stop":
+		return service.Stop()
+	case "restart":
+		return service.Restart()
+	case "status":
+		return service.Status()
+	case "logs":
+		return service.Logs()
+	case "run":
+		run()
+		return nil
+	default:
+		return fmt.Errorf("unknown command: %s\nusage: jotd [install|uninstall|start|stop|restart|status|logs|run]", cmd)
+	}
+}
+
+func run() {
 	cfg := config.Load()
 
 	database, err := db.Open(cfg.DatabasePath)
@@ -64,7 +100,7 @@ func runCLI(ag *agent.Agent) {
 	isPipe := (stat.Mode() & os.ModeCharDevice) == 0
 
 	if !isPipe {
-		fmt.Print("jot> ")
+		fmt.Print("jotd> ")
 	}
 
 	var history []llm.Message
@@ -73,7 +109,7 @@ func runCLI(ag *agent.Agent) {
 		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
 			if !isPipe {
-				fmt.Print("jot> ")
+				fmt.Print("jotd> ")
 			}
 			continue
 		}
@@ -92,7 +128,7 @@ func runCLI(ag *agent.Agent) {
 		if isPipe {
 			break // single exchange in pipe mode
 		}
-		fmt.Print("jot> ")
+		fmt.Print("jotd> ")
 	}
 }
 

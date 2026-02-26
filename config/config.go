@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -21,8 +22,22 @@ type Config struct {
 	MaxContextTokens int    // max tokens for LLM context window (0 = use default)
 }
 
+// ConfigDir returns the path to ~/.jot.
+func ConfigDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".jot")
+}
+
+// ConfigFile returns the path to ~/.jot/config.
+func ConfigFile() string {
+	return filepath.Join(ConfigDir(), "config")
+}
+
 func Load() *Config {
-	_ = godotenv.Load() // ignore error if no .env
+	// Load ~/.jot/config first (lowest priority), then .env (overrides).
+	// Real environment variables always win over both.
+	_ = godotenv.Load(ConfigFile())
+	_ = godotenv.Load() // .env in current directory
 
 	return &Config{
 		LLMProvider:      envOr("LLM_PROVIDER", "anthropic"),
