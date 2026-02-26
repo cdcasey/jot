@@ -32,9 +32,13 @@ func (d *DB) updateRow(table string, id int64, fields map[string]any) error {
 	setClauses = append(setClauses, "updated_at = datetime('now')")
 	args = append(args, id)
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE id = ?", table, strings.Join(setClauses, ", "))
-	_, err := d.conn.Exec(query, args...)
+	res, err := d.conn.Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("updating %s %d: %w", table, id, err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("%s %d not found", table, id)
 	}
 	return nil
 }
