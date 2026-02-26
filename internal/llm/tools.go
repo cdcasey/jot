@@ -78,6 +78,24 @@ var AgentTools = []Tool{
 		}),
 	},
 	{
+		Name:        "update_memory",
+		Description: "Update a memory by ID. Can change content, category, tags, or expires_at. Use this to correct or enrich existing memories.",
+		Parameters: objReq(map[string]any{
+			"id":         prop("integer", "Memory ID to update"),
+			"content":    prop("string", "New content text"),
+			"category":   prop("string", "New category: observation, decision, blocker, preference, event, reflection"),
+			"tags":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "New tags"},
+			"expires_at": prop("string", "New expiry datetime (YYYY-MM-DD HH:MM:SS), or empty string to make permanent"),
+		}, "id"),
+	},
+	{
+		Name:        "delete_memory",
+		Description: "Delete a memory by ID. Use when a memory is no longer relevant or was created in error.",
+		Parameters: objReq(map[string]any{
+			"id": prop("integer", "Memory ID to delete"),
+		}, "id"),
+	},
+	{
 		Name:        "get_note",
 		Description: "Retrieve a stored note by key. Use this for persistent memory.",
 		Parameters: objReq(map[string]any{

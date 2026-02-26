@@ -198,6 +198,38 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		}
 		result, err = a.db.SearchMemories(query, category, tag, thingID, since, int(limit))
 
+	case "update_memory":
+		id, _ := getInt(params, "id")
+		fields := make(map[string]any)
+		for _, k := range []string{"content", "category", "expires_at"} {
+			if v, ok := params[k]; ok {
+				fields[k] = v
+			}
+		}
+		if v, ok := params["tags"]; ok {
+			if arr, ok := v.([]any); ok {
+				var tags []string
+				for _, t := range arr {
+					if s, ok := t.(string); ok {
+						tags = append(tags, s)
+					}
+				}
+				b, _ := json.Marshal(tags)
+				fields["tags"] = string(b)
+			}
+		}
+		err = a.db.UpdateMemory(id, fields)
+		if err == nil {
+			result = map[string]any{"status": "updated"}
+		}
+
+	case "delete_memory":
+		id, _ := getInt(params, "id")
+		err = a.db.DeleteMemory(id)
+		if err == nil {
+			result = map[string]any{"status": "deleted"}
+		}
+
 	case "list_recent_memories":
 		category, _ := getString(params, "category")
 		limit, _ := getInt(params, "limit")

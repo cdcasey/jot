@@ -97,8 +97,12 @@ CREATE TABLE memories (
     thing_id INTEGER REFERENCES things(id),
     source TEXT NOT NULL DEFAULT 'agent',
     expires_at TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );
+
+-- FTS5 full-text search index (content-sync'd with memories table via triggers)
+CREATE VIRTUAL TABLE memories_fts USING fts5(content, content_rowid='id', content='memories');
 
 CREATE TABLE skills (
     id INTEGER PRIMARY KEY,
@@ -144,8 +148,10 @@ The agent has exactly these tools - no more, no less:
 - `get_note` - Retrieve a stored note by key
 - `set_note` - Store or update a note (agent's scratchpad memory)
 - `save_memory` - Save a timestamped memory (events, decisions, blockers)
-- `search_memories` - Search past memories by text, category, tag, thing, or date
+- `search_memories` - Search past memories by text (FTS5), category, tag, thing, or date
 - `list_recent_memories` - List most recent memories
+- `update_memory` - Update a memory by ID (content, category, tags, expires_at)
+- `delete_memory` - Delete a memory by ID
 
 ### Utility Tools
 - `get_time` - Get the current system time
@@ -298,7 +304,12 @@ go build -o agent ./cmd/agent
 - [x] One-shot reminders with 60s polling ticker
 - [x] CHECK_IN_CRON demoted to seed fallback
 
-### Phase 4: Polish
+### Phase 4: Memory Improvements (PLAN2.md Phase 2)
+- [x] FTS5 full-text search for memories (virtual table, triggers, backfill)
+- [x] Memory management tools (update_memory, delete_memory, resolve_memory)
+- [ ] Conversation summaries (table, Discord handler rework, auto-summarize)
+
+### Phase 5: Polish
 - [x] Remaining tools (ideas, notes)
 - [x] Better context window management
 - [x] Conversation history (how many messages to include)

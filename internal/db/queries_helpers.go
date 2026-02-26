@@ -6,8 +6,9 @@ import (
 )
 
 var allowedColumns = map[string]map[string]bool{
-	"things": {"title": true, "notes": true, "status": true, "priority": true, "due_date": true, "tags": true, "completed_at": true},
-	"skills": {"name": true, "description": true, "content": true, "tags": true},
+	"things":   {"title": true, "notes": true, "status": true, "priority": true, "due_date": true, "tags": true, "completed_at": true},
+	"skills":   {"name": true, "description": true, "content": true, "tags": true},
+	"memories": {"content": true, "category": true, "tags": true, "expires_at": true},
 }
 
 // updateRow is a generic helper for updating a row's fields.
@@ -31,9 +32,13 @@ func (d *DB) updateRow(table string, id int64, fields map[string]any) error {
 	setClauses = append(setClauses, "updated_at = datetime('now')")
 	args = append(args, id)
 	query := fmt.Sprintf("UPDATE %s SET %s WHERE id = ?", table, strings.Join(setClauses, ", "))
-	_, err := d.conn.Exec(query, args...)
+	res, err := d.conn.Exec(query, args...)
 	if err != nil {
 		return fmt.Errorf("updating %s %d: %w", table, id, err)
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return fmt.Errorf("%s %d not found", table, id)
 	}
 	return nil
 }

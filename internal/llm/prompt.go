@@ -29,6 +29,8 @@ Memory:
 - Categories: observation (general), decision (choices made), blocker (things stuck), preference (user preferences), event (something happened), reflection (your synthesis).
 - For temporary working state, set expires_at to 1-3 days out. Omit expires_at for permanent memories.
 - Be selective. Not every interaction needs a memory. Save what would be useful in a future conversation.
+- Use update_memory to correct or enrich memories. Use delete_memory to remove irrelevant ones.
+- When a blocker is resolved, update the memory's category or delete it so it doesn't clutter future context.
 
 Skills:
 - Skills are reusable procedures and knowledge you've learned. Use them to remember HOW to do things.

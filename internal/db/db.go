@@ -29,6 +29,10 @@ func Open(path string) (*DB, error) {
 	if _, err := conn.Exec(schema); err != nil {
 		return nil, fmt.Errorf("running migrations: %w", err)
 	}
+	// Backfill FTS index for any memories that predate the FTS table.
+	if _, err := conn.Exec(`INSERT OR IGNORE INTO memories_fts(rowid, content) SELECT id, content FROM memories`); err != nil {
+		return nil, fmt.Errorf("backfilling FTS: %w", err)
+	}
 	return &DB{conn: conn}, nil
 }
 

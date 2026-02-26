@@ -1,6 +1,7 @@
 package db
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -368,6 +369,159 @@ func TestListRecentMemoriesFilterByCategory(t *testing.T) {
 	}
 	if memories[0].Category != "blocker" {
 		t.Errorf("expected category %q, got %q", "blocker", memories[0].Category)
+	}
+}
+
+// --- FTS Search ---
+
+func TestSearchMemoriesFTS(t *testing.T) {
+	d := openTestDB(t)
+
+	d.SaveMemory("blocked on API review from the platform team", "blocker", "agent", []string{"api"}, nil, "")
+	d.SaveMemory("decided to use PostgreSQL for the new service", "decision", "agent", nil, nil, "")
+	d.SaveMemory("the API gateway latency is too high", "observation", "agent", []string{"api"}, nil, "")
+
+	// FTS should find both API-related memories
+	results, err := d.SearchMemories("API", "", "", nil, "", 10)
+	if err != nil {
+		t.Fatalf("SearchMemories(FTS): %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 FTS results for 'API', got %d", len(results))
+	}
+
+	// FTS + category filter
+	results, err = d.SearchMemories("API", "blocker", "", nil, "", 10)
+	if err != nil {
+		t.Fatalf("SearchMemories(FTS+category): %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 FTS result for 'API' + blocker, got %d", len(results))
+	}
+	if results[0].Category != "blocker" {
+		t.Errorf("expected category %q, got %q", "blocker", results[0].Category)
+	}
+
+	// FTS query with no matches
+	results, _ = d.SearchMemories("kubernetes", "", "", nil, "", 10)
+	if len(results) != 0 {
+		t.Errorf("expected 0 results for 'kubernetes', got %d", len(results))
+	}
+}
+
+func TestFTSSyncOnInsert(t *testing.T) {
+	d := openTestDB(t)
+
+	d.SaveMemory("unique snowflake memory", "observation", "agent", nil, nil, "")
+
+	results, err := d.SearchMemories("snowflake", "", "", nil, "", 10)
+	if err != nil {
+		t.Fatalf("SearchMemories: %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+}
+
+func TestFTSSyncOnDelete(t *testing.T) {
+	d := openTestDB(t)
+
+	id, _ := d.SaveMemory("ephemeral thought", "observation", "agent", nil, nil, "")
+
+	// Should find it
+	results, _ := d.SearchMemories("ephemeral", "", "", nil, "", 10)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result before delete, got %d", len(results))
+	}
+
+	// Delete and verify FTS no longer finds it
+	err := d.DeleteMemory(id)
+	if err != nil {
+		t.Fatalf("DeleteMemory: %v", err)
+	}
+	results, _ = d.SearchMemories("ephemeral", "", "", nil, "", 10)
+	if len(results) != 0 {
+		t.Errorf("expected 0 results after delete, got %d", len(results))
+	}
+}
+
+// --- Memory Management ---
+
+func TestUpdateMemory(t *testing.T) {
+	d := openTestDB(t)
+
+	id, _ := d.SaveMemory("original content", "observation", "agent", []string{"tag1"}, nil, "")
+
+	err := d.UpdateMemory(id, map[string]any{"content": "updated content", "category": "decision"})
+	if err != nil {
+		t.Fatalf("UpdateMemory: %v", err)
+	}
+
+	// Verify the update via search
+	results, _ := d.SearchMemories("updated", "", "", nil, "", 10)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Content != "updated content" {
+		t.Errorf("expected content %q, got %q", "updated content", results[0].Content)
+	}
+	if results[0].Category != "decision" {
+		t.Errorf("expected category %q, got %q", "decision", results[0].Category)
+	}
+}
+
+func TestUpdateMemoryNotFound(t *testing.T) {
+	d := openTestDB(t)
+
+	err := d.UpdateMemory(9999, map[string]any{"content": "nope"})
+	if err == nil {
+		t.Error("expected error updating nonexistent memory, got nil")
+	}
+}
+
+func TestDeleteMemory(t *testing.T) {
+	d := openTestDB(t)
+
+	id, _ := d.SaveMemory("to be deleted", "observation", "agent", nil, nil, "")
+
+	err := d.DeleteMemory(id)
+	if err != nil {
+		t.Fatalf("DeleteMemory: %v", err)
+	}
+
+	// Verify gone
+	results, _ := d.ListRecentMemories("", 10)
+	if len(results) != 0 {
+		t.Errorf("expected 0 memories after delete, got %d", len(results))
+	}
+
+	// Deleting nonexistent should error
+	err = d.DeleteMemory(9999)
+	if err == nil {
+		t.Error("expected error deleting nonexistent memory, got nil")
+	}
+}
+
+func TestResolveMemory(t *testing.T) {
+	d := openTestDB(t)
+
+	id, _ := d.SaveMemory("blocked on code review", "blocker", "agent", nil, nil, "")
+
+	err := d.ResolveMemory(id, "review completed by Sarah")
+	if err != nil {
+		t.Fatalf("ResolveMemory: %v", err)
+	}
+
+	// Verify category changed and content appended
+	results, _ := d.SearchMemories("blocked", "", "", nil, "", 10)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+	if results[0].Category != "resolved" {
+		t.Errorf("expected category %q, got %q", "resolved", results[0].Category)
+	}
+	if !strings.Contains(results[0].Content, "Resolution: review completed by Sarah") {
+		t.Errorf("expected resolution text in content, got %q", results[0].Content)
 	}
 }
 
