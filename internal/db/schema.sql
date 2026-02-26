@@ -35,6 +35,26 @@ CREATE TABLE IF NOT EXISTS memories (
     created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- FTS5 full-text search index for memories
+CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
+    content,
+    content_rowid='id',
+    content='memories'
+);
+
+CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
+    INSERT INTO memories_fts(rowid, content) VALUES (new.id, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
+    INSERT INTO memories_fts(memories_fts, rowid, content) VALUES('delete', old.id, old.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
+    INSERT INTO memories_fts(memories_fts, rowid, content) VALUES('delete', old.id, old.content);
+    INSERT INTO memories_fts(rowid, content) VALUES (new.id, new.content);
+END;
+
 CREATE TABLE IF NOT EXISTS skills (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
