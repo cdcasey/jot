@@ -409,11 +409,27 @@ Run `go test ./...` and `go vet ./...`. Ensure all new and existing tests pass. 
 
 ---
 
+## Phase 5: Habit Tracking ✓ COMPLETE
+
+Structured habit logging with streak computation in Go. One table (`habit_logs`), three tools (`log_habit`, `get_habit_stats`, `list_habits`). Logs are immutable — no `updateRow`, no `allowedColumns` entry. Streaks computed in Go and handed to the LLM as clean numbers.
+
+Files added/modified:
+- `internal/db/schema.sql` — `habit_logs` table + compound index
+- `internal/db/queries.go` — `HabitLog`, `HabitStats`, `HabitSummary` structs
+- `internal/db/queries_habits.go` — new file with `LogHabit`, `ListHabits`, `GetHabitStats` + streak helpers
+- `internal/llm/tools.go` — 3 tool definitions
+- `internal/agent/agent.go` — 3 `executeTool` cases
+- `internal/llm/prompt.go` — Habits section in system prompt
+- `internal/db/queries_test.go` — 6 test cases
+
+---
+
 ## Implementation Order Summary
 
-1. **Phase 1** (Skills + Time) — `get_time` tool first (trivial, immediately useful), then skills table, 5 skill tools, tests. No changes to existing code except additive.
-2. **Phase 2** (Memory) — FTS5, management tools, conversation summaries. Touches existing memory queries and Discord handler.
-3. **Phase 3** (Schedules + Reminders) — schedules table, reminders table, scheduler rewrite with reminder polling, 7 new tools. Replaces single-cron approach.
-4. **Phase 4** (Polish) — integration, docs, migration safety.
+1. **Phase 1** (Skills + Time) — ✓ COMPLETE
+2. **Phase 2** (Memory) — 2.1 FTS5 ✓, 2.2 Memory Mgmt ✓, 2.3 Conversation Summaries NOT STARTED
+3. **Phase 3** (Schedules + Reminders) — ✓ COMPLETE
+4. **Phase 4** (Polish) — 4.2 BLOCKED on 2.3, 4.3/4.4 not started, 4.5 FTS part BLOCKED on 2.3, 4.6 Reminder DM Delivery not started, 4.7 not started
+5. **Phase 5** (Habit Tracking) — ✓ COMPLETE
 
 Each phase should end with `go test ./...` passing and a manual test via CLI.
