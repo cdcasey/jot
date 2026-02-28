@@ -885,3 +885,136 @@ func TestPendingRemindersExcludesFired(t *testing.T) {
 		t.Errorf("expected unfired reminder, got %q", pending[0].Prompt)
 	}
 }
+
+// --- Habits ---
+
+func TestLogAndListHabits(t *testing.T) {
+	d := openTestDB(t)
+
+	today := time.Now().Format("2006-01-02")
+	d.LogHabit("gym", "done", "", today)
+	d.LogHabit("gym", "done", "morning session", today)
+	d.LogHabit("meditation", "skipped", "too tired", today)
+
+	habits, err := d.ListHabits()
+	if err != nil {
+		t.Fatalf("ListHabits: %v", err)
+	}
+	if len(habits) != 2 {
+		t.Fatalf("expected 2 habits, got %d", len(habits))
+	}
+	// Both should show activity in last 7 days
+	for _, h := range habits {
+		if h.Last7Days == 0 {
+			t.Errorf("expected last_7_days > 0 for %q", h.Habit)
+		}
+		if h.LastLogged != today {
+			t.Errorf("expected last_logged %q for %q, got %q", today, h.Habit, h.LastLogged)
+		}
+	}
+}
+
+func TestGetHabitStatsBasic(t *testing.T) {
+	d := openTestDB(t)
+
+	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
+	d.LogHabit("gym", "done", "", "2026-02-25")
+	d.LogHabit("gym", "done", "", "2026-02-26")
+	d.LogHabit("gym", "done", "", "2026-02-27")
+
+	stats, err := d.GetHabitStats("gym", 14, today)
+	if err != nil {
+		t.Fatalf("GetHabitStats: %v", err)
+	}
+	if stats.DoneCount != 3 {
+		t.Errorf("expected done_count 3, got %d", stats.DoneCount)
+	}
+	if stats.CurrentStreak != 3 {
+		t.Errorf("expected current_streak 3, got %d", stats.CurrentStreak)
+	}
+	if stats.LongestStreak != 3 {
+		t.Errorf("expected longest_streak 3, got %d", stats.LongestStreak)
+	}
+	if len(stats.RecentLogs) != 3 {
+		t.Errorf("expected 3 recent logs, got %d", len(stats.RecentLogs))
+	}
+}
+
+func TestStreakBreak(t *testing.T) {
+	d := openTestDB(t)
+
+	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
+	d.LogHabit("gym", "done", "", "2026-02-25")
+	d.LogHabit("gym", "skipped", "", "2026-02-26")
+	d.LogHabit("gym", "done", "", "2026-02-27")
+
+	stats, err := d.GetHabitStats("gym", 14, today)
+	if err != nil {
+		t.Fatalf("GetHabitStats: %v", err)
+	}
+	if stats.CurrentStreak != 1 {
+		t.Errorf("expected current_streak 1 after break, got %d", stats.CurrentStreak)
+	}
+	if stats.LongestStreak != 1 {
+		t.Errorf("expected longest_streak 1, got %d", stats.LongestStreak)
+	}
+}
+
+func TestStreakNotLiveWhenOld(t *testing.T) {
+	d := openTestDB(t)
+
+	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
+	d.LogHabit("gym", "done", "", "2026-02-17") // 10 days ago
+
+	stats, err := d.GetHabitStats("gym", 14, today)
+	if err != nil {
+		t.Fatalf("GetHabitStats: %v", err)
+	}
+	if stats.CurrentStreak != 0 {
+		t.Errorf("expected current_streak 0 for old log, got %d", stats.CurrentStreak)
+	}
+	if stats.LongestStreak != 1 {
+		t.Errorf("expected longest_streak 1, got %d", stats.LongestStreak)
+	}
+}
+
+func TestDuplicateSameDayCountsOnce(t *testing.T) {
+	d := openTestDB(t)
+
+	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
+	d.LogHabit("gym", "done", "morning", "2026-02-27")
+	d.LogHabit("gym", "done", "evening", "2026-02-27")
+
+	stats, err := d.GetHabitStats("gym", 14, today)
+	if err != nil {
+		t.Fatalf("GetHabitStats: %v", err)
+	}
+	// DoneCount counts rows (2 logs), but streak should treat as 1 day
+	if stats.CurrentStreak != 1 {
+		t.Errorf("expected current_streak 1 for duplicate same-day, got %d", stats.CurrentStreak)
+	}
+	if stats.LongestStreak != 1 {
+		t.Errorf("expected longest_streak 1 for duplicate same-day, got %d", stats.LongestStreak)
+	}
+}
+
+func TestGetHabitStatsEmpty(t *testing.T) {
+	d := openTestDB(t)
+
+	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
+	stats, err := d.GetHabitStats("nonexistent", 14, today)
+	if err != nil {
+		t.Fatalf("GetHabitStats(empty): %v", err)
+	}
+	if stats.DoneCount != 0 || stats.SkippedCount != 0 || stats.PartialCount != 0 {
+		t.Errorf("expected zero counts, got done=%d skipped=%d partial=%d",
+			stats.DoneCount, stats.SkippedCount, stats.PartialCount)
+	}
+	if stats.CurrentStreak != 0 || stats.LongestStreak != 0 {
+		t.Errorf("expected zero streaks, got current=%d longest=%d",
+			stats.CurrentStreak, stats.LongestStreak)
+	}
+	if len(stats.RecentLogs) != 0 {
+		t.Errorf("expected 0 recent logs, got %d", len(stats.RecentLogs))
+	}
+}
