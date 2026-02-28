@@ -49,8 +49,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     tools.go                 # Tool definitions (provider-agnostic)
     prompt.go                # System prompt
 /internal/agent/
-    agent.go                 # Core agent loop
-    context.go               # Context building for LLM
+    agent.go                 # Core agent loop + timezone helpers
 /internal/discord/
     bot.go                   # Discord bot setup
     handlers.go              # Message handlers
@@ -127,7 +126,7 @@ CREATE TABLE schedules (
 CREATE TABLE reminders (
     id INTEGER PRIMARY KEY,
     prompt TEXT NOT NULL,
-    fire_at TEXT NOT NULL,             -- UTC datetime: "YYYY-MM-DD HH:MM:SS"
+    fire_at TEXT NOT NULL,             -- stored as UTC: "YYYY-MM-DD HH:MM:SS" (agent sends local, system converts)
     fired INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
 );
@@ -154,7 +153,7 @@ The agent has exactly these tools - no more, no less:
 - `delete_memory` - Delete a memory by ID
 
 ### Utility Tools
-- `get_time` - Get the current system time
+- `get_time` - Get the current time (respects user's timezone note; falls back to server local)
 - `create_skill` / `get_skill` / `list_skills` / `update_skill` / `delete_skill` - Manage reusable skills
 
 ### Schedule Tools
@@ -164,7 +163,7 @@ The agent has exactly these tools - no more, no less:
 - `delete_schedule` - Delete a schedule by name
 
 ### Reminder Tools
-- `create_reminder` - Create a one-shot reminder (prompt, fire_at required; always call get_time first)
+- `create_reminder` - Create a one-shot reminder (prompt, fire_at in local time; system converts to UTC)
 - `list_reminders` - List upcoming unfired reminders
 - `cancel_reminder` - Cancel a reminder by id
 
@@ -303,6 +302,8 @@ go build -o agent ./cmd/agent
 - [x] DB-driven multi-schedule cron (schedules table, agent-manageable)
 - [x] One-shot reminders with 60s polling ticker
 - [x] CHECK_IN_CRON demoted to seed fallback
+- [x] Schedules send prompt directly to agent (no forced check-in context)
+- [x] Timezone-aware reminders (local→UTC conversion via `timezone` note)
 
 ### Phase 4: Memory Improvements (PLAN2.md Phase 2)
 - [x] FTS5 full-text search for memories (virtual table, triggers, backfill)

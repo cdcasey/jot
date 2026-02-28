@@ -291,18 +291,11 @@ Schedules:
 - Common cron patterns: "0 9 * * *" (daily 9am), "0 9 * * 1" (Monday 9am), "0 */4 * * *" (every 4 hours).
 ```
 
-### 3.6 Generalize Context Building
+### 3.6 Generalize Context Building ✓ SUPERSEDED
 
-Rename/refactor `BuildCheckInPrompt` in `internal/agent/context.go` to `BuildScheduledPrompt(database *db.DB, scheduleName string) (string, error)`. It should:
+~~Rename/refactor `BuildCheckInPrompt`...~~
 
-1. Prune expired memories
-2. Get summary
-3. Get last check-in
-4. Get recent memories (last 7 days)
-5. Load skills tagged with the schedule name (if any)
-6. Return the assembled context
-
-The schedule's `prompt` field gets appended to this context when the cron fires.
+**Decision (2026-02-27):** Removed `BuildCheckInPrompt` and `context.go` entirely. Schedules now send their `prompt` directly to the agent with no pre-built context. The LLM self-serves via tools (`get_summary`, `list_things`, `search_memories`) when the prompt asks for it. This fixed a bug where all schedules (including simple ones like "ask about the gym") got the full check-in treatment with 12 open items, overdue reviews, etc.
 
 ### 3.7 Reminders Schema
 
@@ -329,19 +322,11 @@ Add to `internal/db/queries.go`:
 
 Add to `internal/llm/tools.go`:
 
-- `create_reminder` — prompt (required), fire_at (required, UTC datetime string). The agent should use `get_time` first to calculate the correct `fire_at`.
+- `create_reminder` — prompt (required), fire_at (required, local datetime string). The agent should use `get_time` first to determine current time.
 - `list_reminders` — no params. Returns upcoming unfired reminders.
 - `cancel_reminder` — id (required). Deletes or marks as fired.
 
-Add to system prompt:
-
-```
-Reminders:
-- Use create_reminder for one-shot future tasks: "remind me in 5 minutes", "nudge me at 3pm".
-- Always call get_time first to calculate the correct fire_at datetime.
-- fire_at must be in UTC format: "YYYY-MM-DD HH:MM:SS".
-- Reminders are different from schedules: reminders fire once, schedules recur.
-```
+**Timezone handling (added 2026-02-27):** `fire_at` is now accepted in the user's local time. `agent.go` has a `localToUTC()` helper that converts using the `timezone` note (IANA name, e.g. "America/New_York"), falling back to server local. `get_time` also uses `userLocation()` so the LLM sees consistent local time. The user can set their timezone by telling the agent (e.g., "I'm in Eastern") which persists it via `set_note("timezone", "America/New_York")`.
 
 ### 3.10 Scheduler: Reminder Polling
 
@@ -375,9 +360,9 @@ Reminders:
 
 Final cleanup once Phases 1-3 are working.
 
-### 4.1 Update `BuildScheduledPrompt` to Include Skills
+### 4.1 ~~Update `BuildScheduledPrompt` to Include Skills~~ ✓ SUPERSEDED
 
-When building context for any scheduled run or check-in, include a brief listing of available skill names and descriptions so the agent knows what tools/procedures it has available.
+No longer applicable — `BuildCheckInPrompt`/`BuildScheduledPrompt` was removed. The LLM can call `list_skills` on its own when relevant.
 
 ### 4.2 Prune Old Conversation Summaries ⚠️ BLOCKED on Phase 2
 

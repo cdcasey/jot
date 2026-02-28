@@ -1,6 +1,6 @@
 # Jot
 
-A personal assistant for tracking todos, projects, and ideas. Uses Claude/GPT/Ollama for natural language understanding, stores everything in SQLite. Runs as a CLI REPL or Discord bot.
+A personal assistant for tracking open loops — anything on your mind. Uses Claude/GPT/Ollama for natural language understanding, stores everything in SQLite. Runs as a CLI REPL or Discord bot.
 
 ## Setup
 
@@ -25,16 +25,16 @@ Set `LLM_PROVIDER` to one of:
 
 ```bash
 ./jot
-jot> add a todo to buy groceries
-jot> what are my active projects?
-jot> create a project called "home renovation"
+jot> track a thing: buy groceries
+jot> what am I tracking?
+jot> remind me to call the dentist at 3pm
 jot> exit
 ```
 
 ### CLI (pipe)
 
 ```bash
-echo "list my todos" | ./jot
+echo "list my open things" | ./jot
 ```
 
 ### Ollama (local)
@@ -53,18 +53,21 @@ Set `DISCORD_BOT_TOKEN` in `.env`, then run:
 
 The bot responds to DMs and @mentions. Conversation history is maintained per channel.
 
-### Scheduled check-ins
-
-Set both `DISCORD_WEBHOOK_URL` and `CHECK_IN_CRON` in `.env`. The bot will post a daily summary to the webhook channel. Default is 9am daily (`0 9 * * *`).
-
 ## What it can do
 
-- **Todos** — create, list, update, complete (with priority and due dates)
-- **Projects** — create, list, update status (active/paused/completed/archived)
-- **Ideas** — capture with tags, list and filter
+- **Things** — track anything with status, priority, tags, and due dates
 - **Notes** — key-value scratchpad for persistent memory
-- **Memories** — contextual memory with categories, tags, and optional expiry
-- **Summaries** — overview of active projects, pending/overdue todos
+- **Memories** — contextual memory with full-text search (FTS5), categories, tags, and optional expiry
+- **Skills** — reusable knowledge packages the agent can create and reference
+- **Schedules** — recurring tasks via cron (e.g., daily check-ins, weekly reviews). Agent-manageable.
+- **Reminders** — one-shot notifications ("remind me in 5 minutes"). Timezone-aware.
+- **Summaries** — overview of open things, overdue items, recent activity
+
+## Scheduling
+
+Schedules and reminders are stored in SQLite and managed by the agent through conversation. The scheduler delivers via Discord DM (preferred) or webhook fallback.
+
+Set `DISCORD_WEBHOOK_URL` in `.env` for webhook delivery. `CHECK_IN_CRON` seeds a default morning check-in if the schedules table is empty.
 
 ## Testing
 
@@ -72,13 +75,14 @@ Set both `DISCORD_WEBHOOK_URL` and `CHECK_IN_CRON` in `.env`. The bot will post 
 go test ./...
 ```
 
-Tests cover the database layer: CRUD operations, filtering, memory expiry/pruning, and input validation.
+Tests cover the database layer (CRUD, filtering, FTS5 search, memory expiry), LLM token management and message trimming, agent param extraction helpers, and Discord message utilities.
 
 ## Data
 
 Everything lives in `data.db` (SQLite). Inspect it directly:
 
 ```bash
-sqlite3 data.db "SELECT * FROM todos"
-sqlite3 data.db "SELECT * FROM projects"
+sqlite3 data.db ".tables"
+sqlite3 data.db "SELECT * FROM things"
+sqlite3 data.db "SELECT name, cron_expr, prompt FROM schedules"
 ```
