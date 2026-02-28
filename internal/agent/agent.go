@@ -236,7 +236,7 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		result, err = a.db.ListRecentMemories(category, int(limit))
 
 	case "get_time":
-		now := time.Now()
+		now := time.Now().In(a.userLocation())
 		formattedLocal := now.Format(time.RFC3339)
 		formattedUTC := now.UTC().Format(time.RFC3339)
 		date := now.Format("2006-01-02")
@@ -363,11 +363,16 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 	case "create_reminder":
 		prompt, _ := getString(params, "prompt")
 		fireAt, _ := getString(params, "fire_at")
-		id, e := a.db.CreateReminder(prompt, fireAt)
-		if e != nil {
-			err = e
+		fireAtUTC, convertErr := a.localToUTC(fireAt)
+		if convertErr != nil {
+			err = convertErr
 		} else {
-			result = map[string]any{"id": id, "status": "created"}
+			id, e := a.db.CreateReminder(prompt, fireAtUTC)
+			if e != nil {
+				err = e
+			} else {
+				result = map[string]any{"id": id, "status": "created", "fire_at_utc": fireAtUTC}
+			}
 		}
 
 	case "list_reminders":
@@ -429,4 +434,27 @@ func truncate(s string, n int) string {
 		return s
 	}
 	return s[:n] + "..."
+}
+
+// userLocation returns the user's timezone from the "timezone" note,
+// falling back to the server's local timezone.
+func (a *Agent) userLocation() *time.Location {
+	loc := time.Now().Location()
+	if tz, err := a.db.GetNote("timezone"); err == nil && tz != "" {
+		if parsed, err := time.LoadLocation(tz); err == nil {
+			loc = parsed
+		} else {
+			log.Printf("invalid timezone note %q, using server local: %v", tz, err)
+		}
+	}
+	return loc
+}
+
+// localToUTC parses a "YYYY-MM-DD HH:MM:SS" string as local time and converts to UTC.
+func (a *Agent) localToUTC(fireAt string) (string, error) {
+	t, err := time.ParseInLocation("2006-01-02 15:04:05", fireAt, a.userLocation())
+	if err != nil {
+		return "", fmt.Errorf("parsing fire_at %q: %w", fireAt, err)
+	}
+	return t.UTC().Format("2006-01-02 15:04:05"), nil
 }
