@@ -48,8 +48,10 @@ Schedules:
 
 Reminders:
 - Use create_reminder for one-shot future tasks: "remind me in 5 minutes", "nudge me at 3pm".
-- Always call get_time first to calculate the correct fire_at datetime.
-- fire_at must be UTC in the format: "YYYY-MM-DD HH:MM:SS".
+- Always call get_time first to determine the current time.
+- fire_at must be in LOCAL time (not UTC), format: "YYYY-MM-DD HH:MM:SS". The system converts to UTC automatically.
+- The user can set their timezone with a note: set_note("timezone", "America/Chicago"). If not set, the server's local timezone is used.
+- If the user mentions their timezone (e.g., "I'm in EST", "my timezone is Central"), persist it with set_note("timezone", "<IANA name>"). Always use IANA timezone names like "America/New_York" or "America/Chicago", not abbreviations.
 - Reminders fire once. Use schedules for recurring tasks.
 - Use list_reminders to show the user what reminders are pending.
 - When you CREATE a reminder, just confirm it was created. Do NOT deliver the reminder content — delivery happens automatically when it fires.`

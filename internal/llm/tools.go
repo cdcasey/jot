@@ -189,10 +189,10 @@ var AgentTools = []Tool{
 	},
 	{
 		Name:        "create_reminder",
-		Description: "Create a one-shot reminder that fires at a specific UTC datetime. Always call get_time first to calculate fire_at.",
+		Description: "Create a one-shot reminder that fires at a specific local datetime. Always call get_time first to determine the current time.",
 		Parameters: objReq(map[string]any{
 			"prompt":  prop("string", "What to tell the agent when this reminder fires"),
-			"fire_at": prop("string", "UTC datetime to fire: 'YYYY-MM-DD HH:MM:SS'"),
+			"fire_at": prop("string", "Local datetime to fire: 'YYYY-MM-DD HH:MM:SS' (in user's local time, not UTC)"),
 		}, "prompt", "fire_at"),
 	},
 	{
