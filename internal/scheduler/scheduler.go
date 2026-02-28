@@ -119,14 +119,8 @@ func (s *Scheduler) loadSchedules() {
 }
 
 func (s *Scheduler) runSchedule(sched db.Schedule) {
-	prompt, err := agent.BuildCheckInPrompt(s.db)
-	if err != nil {
-		log.Printf("scheduler[%s]: building prompt: %v", sched.Name, err)
-		return
-	}
-	fullPrompt := prompt + "\n\n" + sched.Prompt
+	reply, _, err := s.agent.Run(context.Background(), nil, sched.Prompt)
 
-	reply, _, err := s.agent.Run(context.Background(), nil, fullPrompt)
 	if err != nil {
 		log.Printf("scheduler[%s]: agent error: %v", sched.Name, err)
 		return
