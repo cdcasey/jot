@@ -209,6 +209,29 @@ var AgentTools = []Tool{
 			"id": prop("integer", "Reminder ID to cancel"),
 		}, "id"),
 	},
+	{
+		Name:        "log_habit",
+		Description: "Log a habit instance when the user mentions doing, skipping, or partially completing a recurring activity.",
+		Parameters: objReq(map[string]any{
+			"habit":     prop("string", "Habit name, lowercase and consistent (e.g. 'gym', 'meditation')"),
+			"outcome":   prop("string", "One of: done, skipped, partial"),
+			"notes":     prop("string", "Optional context about this instance"),
+			"logged_at": prop("string", "Date in YYYY-MM-DD format. Defaults to today if omitted."),
+		}, "habit", "outcome"),
+	},
+	{
+		Name:        "get_habit_stats",
+		Description: "Get statistics for a habit: streaks, completion counts, recent entries.",
+		Parameters: objReq(map[string]any{
+			"habit": prop("string", "Habit name to get stats for"),
+			"days":  prop("integer", "Number of days to look back for counts (default 14)"),
+		}, "habit"),
+	},
+	{
+		Name:        "list_habits",
+		Description: "List all tracked habits with recent activity counts.",
+		Parameters:  obj(nil),
+	},
 }
 
 // Helper functions for building JSON Schema objects.

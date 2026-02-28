@@ -103,6 +103,12 @@ func runBot(cfg *config.Config, database *db.DB, ag *agent.Agent) {
 	}
 	defer bot.Close()
 
+	if cfg.DiscordUserID != "" {
+		if err := database.SetNote("discord_user_id", cfg.DiscordUserID); err != nil {
+			log.Printf("warning: failed to seed discord_user_id note: %v", err)
+		}
+	}
+
 	sched := scheduler.New(database, ag, cfg.DiscordWebhook, bot.SendDM)
 	sched.SeedDefaultSchedule(cfg.CheckInCron)
 	sched.Start()

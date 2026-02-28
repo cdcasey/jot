@@ -83,3 +83,14 @@ CREATE TABLE IF NOT EXISTS reminders (
   fired INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS habit_logs (
+    id         INTEGER PRIMARY KEY,
+    habit      TEXT NOT NULL,
+    outcome    TEXT NOT NULL CHECK(outcome IN ('done', 'skipped', 'partial')),
+    notes      TEXT,
+    logged_at  TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_habit_logs_habit_date ON habit_logs(habit, logged_at);

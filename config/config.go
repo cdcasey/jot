@@ -16,6 +16,7 @@ type Config struct {
 	OllamaBaseURL    string
 	DiscordToken     string
 	DiscordWebhook   string
+	DiscordUserID    string
 	DatabasePath     string
 	CheckInCron      string
 	MaxContextTokens int    // max tokens for LLM context window (0 = use default)
@@ -33,6 +34,7 @@ func Load() *Config {
 		OllamaBaseURL:    envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
 		DiscordToken:     os.Getenv("DISCORD_BOT_TOKEN"),
 		DiscordWebhook:   os.Getenv("DISCORD_WEBHOOK_URL"),
+		DiscordUserID:    os.Getenv("DISCORD_USER_ID"),
 		DatabasePath:     envOr("DATABASE_PATH", "./data.db"),
 		CheckInCron:      envOr("CHECK_IN_CRON", "0 9 * * *"),
 		MaxContextTokens: envInt("MAX_CONTEXT_TOKENS", 180000),

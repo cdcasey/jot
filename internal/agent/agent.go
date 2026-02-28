@@ -390,6 +390,33 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 			result = map[string]any{"status": "cancelled"}
 		}
 
+	case "log_habit":
+		habit, _ := getString(params, "habit")
+		outcome, _ := getString(params, "outcome")
+		notes, _ := getString(params, "notes")
+		loggedAt, _ := getString(params, "logged_at")
+		if loggedAt == "" {
+			loggedAt = time.Now().In(a.userLocation()).Format("2006-01-02")
+		}
+		id, e := a.db.LogHabit(habit, outcome, notes, loggedAt)
+		if e != nil {
+			err = e
+		} else {
+			result = map[string]any{"id": id, "status": "logged", "logged_at": loggedAt}
+		}
+
+	case "get_habit_stats":
+		habit, _ := getString(params, "habit")
+		days, ok := getInt(params, "days")
+		if !ok || days <= 0 {
+			days = 14
+		}
+		today := time.Now().In(a.userLocation())
+		result, err = a.db.GetHabitStats(habit, int(days), today)
+
+	case "list_habits":
+		result, err = a.db.ListHabits()
+
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}
 	}
