@@ -104,7 +104,6 @@ func (s *Scheduler) loadSchedules() {
 	s.entryIDs = make(map[int64]cron.EntryID)
 
 	for _, sched := range schedules {
-		sched := sched // capture for closure
 		entryID, err := s.cron.AddFunc(sched.CronExpr, func() {
 			s.runSchedule(sched)
 		})
@@ -119,7 +118,14 @@ func (s *Scheduler) loadSchedules() {
 }
 
 func (s *Scheduler) runSchedule(sched db.Schedule) {
-	reply, _, err := s.agent.Run(context.Background(), nil, sched.Prompt)
+	var reply string
+	var err error
+
+	if userID := s.resolveUserID(); userID != "" {
+		reply, err = s.agent.RunWithConversation(context.Background(), userID, sched.Prompt)
+	} else {
+		reply, _, err = s.agent.Run(context.Background(), nil, sched.Prompt)
+	}
 
 	if err != nil {
 		log.Printf("scheduler[%s]: agent error: %v", sched.Name, err)
@@ -146,9 +152,14 @@ func (s *Scheduler) fireReminders() {
 		return
 	}
 	for _, r := range pending {
-		r := r
 		msg := fmt.Sprintf("A reminder just fired. The user asked to be reminded: %q. Deliver this reminder to them in a brief, friendly message. Do NOT create a new reminder or ask clarifying questions — just notify them.", r.Prompt)
-		reply, _, err := s.agent.Run(context.Background(), nil, msg)
+		var reply string
+		var err error
+		if userID := s.resolveUserID(); userID != "" {
+			reply, err = s.agent.RunWithConversation(context.Background(), userID, msg)
+		} else {
+			reply, _, err = s.agent.Run(context.Background(), nil, msg)
+		}
 		if err != nil {
 			log.Printf("scheduler: reminder %d agent error: %v", r.ID, err)
 			continue
@@ -181,6 +192,15 @@ func (s *Scheduler) deliver(label, content string) {
 		return
 	}
 	log.Printf("%s: no delivery method available (no DM user and no webhook)", label)
+}
+
+// resolveUserID looks up the discord_user_id note. Returns empty string if not set.
+func (s *Scheduler) resolveUserID() string {
+	note, err := s.db.GetNote("discord_user_id")
+	if err != nil || note == "" {
+		return ""
+	}
+	return note
 }
 
 func postWebhook(url, content string) error {

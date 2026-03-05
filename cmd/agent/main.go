@@ -67,8 +67,6 @@ func runCLI(ag *agent.Agent) {
 		fmt.Print("jot> ")
 	}
 
-	var history []llm.Message
-
 	for scanner.Scan() {
 		input := strings.TrimSpace(scanner.Text())
 		if input == "" {
@@ -81,16 +79,15 @@ func runCLI(ag *agent.Agent) {
 			break
 		}
 
-		reply, newHistory, err := ag.Run(ctx, history, input)
+		reply, err := ag.RunWithConversation(ctx, "cli", input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		} else {
 			fmt.Println(reply)
-			history = newHistory
 		}
 
 		if isPipe {
-			break // single exchange in pipe mode
+			break
 		}
 		fmt.Print("jot> ")
 	}
