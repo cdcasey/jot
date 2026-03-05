@@ -9,44 +9,58 @@ import (
 )
 
 func TestEval(t *testing.T) {
-	// Require explicit opt-in — don't run during `go test ./...`
 	if os.Getenv("RUN_EVAL") == "" {
 		t.Skip("skipping eval (set RUN_EVAL=1 or use `make eval`)")
 	}
 
-	provider := envOr("LLM_PROVIDER", "anthropic")
-	model := envOr("LLM_MODEL", "")
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
-	authToken := os.Getenv("ANTHROPIC_AUTH_TOKEN")
-	openaiKey := os.Getenv("OPENAI_API_KEY")
+	agentClient, agentModel := buildClient(t, "LLM_PROVIDER", "LLM_MODEL")
+	judgeClient, _ := buildClient(t, "LLM_EVAL_PROVIDER", "LLM_EVAL_MODEL")
+
+	casesPath := filepath.Join(".", "cases.json")
+	if _, err := os.Stat(casesPath); os.IsNotExist(err) {
+		casesPath = filepath.Join("eval", "cases.json")
+	}
+
+	RunEval(t, casesPath, agentClient, judgeClient, agentModel)
+}
+
+// buildClient creates an LLM client from the given env var names.
+// The fallback vars (providerVar → LLM_PROVIDER, modelVar → LLM_MODEL) are used
+// when the primary vars are empty — so LLM_EVAL_PROVIDER falls back to LLM_PROVIDER.
+func buildClient(t *testing.T, providerVar, modelVar string) (llm.Client, string) {
+	t.Helper()
+
+	provider := envOr(providerVar, "")
+	model := envOr(modelVar, "")
+
+	// Fall back to the base vars if the specific ones aren't set.
+	if provider == "" {
+		provider = envOr("LLM_PROVIDER", "anthropic")
+	}
+	if model == "" {
+		model = envOr("LLM_MODEL", "")
+	}
 
 	cfg := llm.ProviderConfig{
 		Provider:  provider,
 		Model:     model,
-		APIKey:    apiKey,
-		AuthToken: authToken,
+		APIKey:    os.Getenv("ANTHROPIC_API_KEY"),
+		AuthToken: os.Getenv("ANTHROPIC_AUTH_TOKEN"),
 	}
 	if provider == "openai" {
-		cfg.APIKey = openaiKey
+		cfg.APIKey = os.Getenv("OPENAI_API_KEY")
 	}
 
 	client, err := llm.NewClient(cfg)
 	if err != nil {
-		t.Fatalf("creating LLM client: %v", err)
-	}
-
-	casesPath := filepath.Join(".", "cases.json")
-	if _, err := os.Stat(casesPath); os.IsNotExist(err) {
-		// Try from repo root.
-		casesPath = filepath.Join("eval", "cases.json")
+		t.Fatalf("creating %s/%s client: %v", providerVar, modelVar, err)
 	}
 
 	displayModel := model
 	if displayModel == "" {
 		displayModel = provider + " (default)"
 	}
-
-	RunEval(t, casesPath, client, displayModel)
+	return client, displayModel
 }
 
 func envOr(key, fallback string) string {

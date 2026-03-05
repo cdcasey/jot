@@ -85,7 +85,9 @@ func LoadCases(path string) ([]EvalCase, error) {
 }
 
 // RunEval executes all eval cases and prints results.
-func RunEval(t *testing.T, casePath string, client llm.Client, model string) {
+// agentClient runs the agent under test; judgeClient scores rubric-based cases.
+// They can be the same client or different (e.g., Haiku as agent, Sonnet as judge).
+func RunEval(t *testing.T, casePath string, agentClient, judgeClient llm.Client, model string) {
 	cases, err := LoadCases(casePath)
 	if err != nil {
 		t.Fatalf("loading cases: %v", err)
@@ -94,7 +96,7 @@ func RunEval(t *testing.T, casePath string, client llm.Client, model string) {
 	var results []CaseResult
 	for _, ec := range cases {
 		t.Run(ec.Name, func(t *testing.T) {
-			result := runCase(t, ec, client)
+			result := runCase(t, ec, agentClient, judgeClient)
 			results = append(results, result)
 		})
 	}
@@ -102,7 +104,7 @@ func RunEval(t *testing.T, casePath string, client llm.Client, model string) {
 	printResults(results, model)
 }
 
-func runCase(t *testing.T, ec EvalCase, client llm.Client) CaseResult {
+func runCase(t *testing.T, ec EvalCase, agentClient, judgeClient llm.Client) CaseResult {
 	// Fresh in-memory DB for each case.
 	database, err := db.Open(":memory:")
 	if err != nil {
@@ -114,7 +116,7 @@ func runCase(t *testing.T, ec EvalCase, client llm.Client) CaseResult {
 	seedDB(t, database, ec.Seed)
 
 	// Run the agent.
-	a := agent.New(database, client, 180000)
+	a := agent.New(database, agentClient, 180000)
 	ctx := context.Background()
 	response, history, err := a.Run(ctx, nil, ec.Prompt)
 	if err != nil {
@@ -143,7 +145,7 @@ func runCase(t *testing.T, ec EvalCase, client llm.Client) CaseResult {
 
 	// LLM-as-judge scoring.
 	if ec.Assert.Rubric != "" {
-		score, reason, err := judgeResponse(ctx, client, ec.Prompt, response, ec.Assert.Rubric)
+		score, reason, err := judgeResponse(ctx, judgeClient, ec.Prompt, response, ec.Assert.Rubric)
 		if err != nil {
 			t.Errorf("judge error: %v", err)
 			result.Score = 0
