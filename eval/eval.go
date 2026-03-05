@@ -54,7 +54,8 @@ type SeedSkill struct {
 
 // Assert defines what to check after the agent responds.
 type Assert struct {
-	ToolCalled       []string `json:"tool_called,omitempty"`
+	ToolCalled       []string `json:"tool_called,omitempty"`        // ALL of these must be called
+	ToolCalledAny    []string `json:"tool_called_any,omitempty"`    // at least ONE of these must be called
 	ToolNotCalled    []string `json:"tool_not_called,omitempty"`
 	ResponseContains []string `json:"response_contains,omitempty"`
 	Rubric           string   `json:"rubric,omitempty"`
@@ -134,7 +135,7 @@ func runCase(t *testing.T, ec EvalCase, agentClient, judgeClient llm.Client) Cas
 	}
 
 	// Check pass/fail assertions.
-	if len(ec.Assert.ToolCalled) > 0 || len(ec.Assert.ToolNotCalled) > 0 || len(ec.Assert.ResponseContains) > 0 {
+	if len(ec.Assert.ToolCalled) > 0 || len(ec.Assert.ToolCalledAny) > 0 || len(ec.Assert.ToolNotCalled) > 0 || len(ec.Assert.ResponseContains) > 0 {
 		pass, reason := checkAssertions(ec.Assert, toolsCalled, response)
 		result.Passed = pass
 		result.Reason = reason
@@ -214,6 +215,18 @@ func checkAssertions(assert Assert, toolsCalled []string, response string) (bool
 	for _, required := range assert.ToolCalled {
 		if !toolSet[required] {
 			failures = append(failures, fmt.Sprintf("tool %s not called", required))
+		}
+	}
+	if len(assert.ToolCalledAny) > 0 {
+		found := false
+		for _, t := range assert.ToolCalledAny {
+			if toolSet[t] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			failures = append(failures, fmt.Sprintf("none of [%s] called", strings.Join(assert.ToolCalledAny, ", ")))
 		}
 	}
 	for _, forbidden := range assert.ToolNotCalled {
