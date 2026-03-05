@@ -1,0 +1,135 @@
+[
+  {
+    "name": "tool_get_time",
+    "category": "tool_reliability",
+    "prompt": "What time is it?",
+    "seed": {},
+    "assert": {
+      "tool_called": ["get_time"]
+    }
+  },
+  {
+    "name": "tool_create_reminder",
+    "category": "tool_reliability",
+    "prompt": "Remind me to call the dentist tomorrow at 2pm",
+    "seed": {
+      "notes": {
+        "timezone": "America/New_York"
+      }
+    },
+    "assert": {
+      "tool_called": ["get_time", "create_reminder"],
+      "tool_not_called": ["create_thing"]
+    }
+  },
+  {
+    "name": "tool_list_things",
+    "category": "tool_reliability",
+    "prompt": "What's on my plate?",
+    "seed": {
+      "things": [
+        {"title": "Finish quarterly report", "priority": "high", "status": "active", "tags": ["work"]},
+        {"title": "Buy groceries", "priority": "normal", "status": "open", "tags": ["errands"]},
+        {"title": "Review PR #42", "priority": "high", "status": "open", "tags": ["work"]},
+        {"title": "Schedule dentist", "priority": "low", "status": "open", "tags": ["health"]},
+        {"title": "Ship v2.0 release", "priority": "urgent", "status": "active", "tags": ["work"]},
+        {"title": "Plan weekend hike", "priority": "low", "status": "open", "tags": ["personal"]}
+      ]
+    },
+    "assert": {
+      "tool_called": ["list_things"]
+    }
+  },
+  {
+    "name": "context_topic_clusters",
+    "category": "context_integration",
+    "prompt": "What topics have I been thinking about most?",
+    "seed": {
+      "things": [
+        {"title": "Learn React hooks", "tags": ["coding"], "status": "open"},
+        {"title": "Build portfolio site", "tags": ["coding"], "status": "open"},
+        {"title": "Read DDIA chapter 5", "tags": ["coding", "reading"], "status": "open"},
+        {"title": "Refactor auth module", "tags": ["coding"], "status": "active"},
+        {"title": "Meal prep Sunday", "tags": ["health"], "status": "open"},
+        {"title": "Try new gym routine", "tags": ["health"], "status": "open"},
+        {"title": "Book dentist appointment", "tags": ["health"], "status": "open"},
+        {"title": "Research protein supplements", "tags": ["health"], "status": "open"},
+        {"title": "Plan weekend trip", "tags": ["personal"], "status": "open"},
+        {"title": "Call mom", "tags": ["personal"], "status": "open"},
+        {"title": "Fix kitchen faucet", "tags": ["home"], "status": "open"},
+        {"title": "Research standing desks", "tags": ["home", "health"], "status": "open"}
+      ]
+    },
+    "assert": {
+      "tool_called": ["list_things"],
+      "rubric": "Should identify that coding (4 items) and health (4-5 items) are the dominant themes. Should synthesize clusters, not just list all 12 items verbatim. A good response groups items and notes relative weight."
+    }
+  },
+  {
+    "name": "context_prioritization",
+    "category": "context_integration",
+    "prompt": "What should I focus on today?",
+    "seed": {
+      "things": [
+        {"title": "Ship v2.0 release", "priority": "urgent", "status": "active", "due_date": "2026-03-04", "tags": ["work"]},
+        {"title": "Write blog post", "priority": "normal", "status": "open", "due_date": "2026-03-10", "tags": ["writing"]},
+        {"title": "Fix CI pipeline", "priority": "high", "status": "open", "tags": ["work"]},
+        {"title": "Organize desk", "priority": "low", "status": "open", "tags": ["home"]},
+        {"title": "Respond to client email", "priority": "high", "status": "open", "due_date": "2026-03-04", "tags": ["work"]},
+        {"title": "Read chapter 3", "priority": "low", "status": "open", "tags": ["learning"]},
+        {"title": "Submit expense report", "priority": "normal", "status": "open", "due_date": "2026-03-05", "tags": ["work"]}
+      ]
+    },
+    "assert": {
+      "tool_called": ["list_things"],
+      "rubric": "Should prioritize the urgent/due-today items (Ship v2.0, Respond to client email) over low-priority items. Should reason about urgency vs importance, not just sort by date or list everything equally. Should suggest a realistic focus for the day."
+    }
+  },
+  {
+    "name": "context_memory_recall",
+    "category": "context_integration",
+    "prompt": "Didn't I have an idea about automating my weekly reviews?",
+    "seed": {
+      "memories": [
+        {"content": "User mentioned wanting to automate weekly review process — maybe a scheduled prompt that pulls open items, recent completions, and blockers into a summary", "category": "observation", "tags": ["productivity", "automation"]},
+        {"content": "Discussed switching from VS Code to Neovim for Go development", "category": "observation", "tags": ["tools"]},
+        {"content": "User decided to use tags instead of separate project categories for organizing things", "category": "decision", "tags": ["workflow"]},
+        {"content": "User blocked on API review from team lead, been waiting 3 days", "category": "blocker", "tags": ["work"]}
+      ]
+    },
+    "assert": {
+      "tool_called": ["search_memories"],
+      "rubric": "Should find and reference the relevant memory about automating weekly reviews. Should connect it naturally — e.g., mentioning the scheduled prompt idea. Should not hallucinate details that weren't in the memory."
+    }
+  },
+  {
+    "name": "reasoning_tradeoffs",
+    "category": "reasoning",
+    "prompt": "I want to start exercising, learn guitar, and read more, but I only have an hour of free time per day.",
+    "seed": {},
+    "assert": {
+      "rubric": "Should engage with the tradeoff meaningfully. Should NOT just say 'try all three for 20 minutes each' or give generic productivity advice. Should ask about priorities, suggest picking one or two to start, or discuss the realistic constraints. Should treat the user as an adult making a real decision."
+    }
+  },
+  {
+    "name": "reasoning_patterns",
+    "category": "reasoning",
+    "prompt": "I keep adding ideas but never finishing projects. What's going on?",
+    "seed": {
+      "things": [
+        {"title": "Build a CLI todo app", "status": "open", "tags": ["project"]},
+        {"title": "Learn Rust", "status": "open", "tags": ["learning"]},
+        {"title": "Start a newsletter", "status": "open", "tags": ["project"]},
+        {"title": "Redesign personal site", "status": "open", "tags": ["project"]},
+        {"title": "Build a budgeting tool", "status": "dropped", "tags": ["project"]},
+        {"title": "Learn piano", "status": "dropped", "tags": ["learning"]},
+        {"title": "Write a short story", "status": "dropped", "tags": ["project"]},
+        {"title": "Automate home lab", "status": "open", "tags": ["project"]}
+      ]
+    },
+    "assert": {
+      "tool_called": ["list_things"],
+      "rubric": "Should notice the pattern in the data (many open/dropped projects, nothing done). Should push back or ask probing questions rather than giving generic advice like 'try breaking tasks into smaller pieces.' Should engage with WHY this might be happening — novelty bias, fear of finishing, unclear goals, etc."
+    }
+  }
+]
