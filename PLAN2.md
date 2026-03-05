@@ -177,34 +177,24 @@ Add to `internal/llm/tools.go`:
 
 Update system prompt to mention these tools and when to use them (e.g., "When a blocker is resolved, update or delete the memory").
 
-### 2.3 Conversation Summaries
+### 2.3 Conversation Summaries ✓ COMPLETE
 
-Add a table:
+Two tables: `conversations` (persistent message history keyed by user ID) and `conversation_summaries` (LLM-generated summaries of past conversations).
 
-```sql
-CREATE TABLE IF NOT EXISTS conversation_summaries (
-    id INTEGER PRIMARY KEY,
-    channel TEXT NOT NULL, -- discord channel ID, "cli", etc.
-    summary TEXT NOT NULL,
-    message_count INTEGER,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-```
+Key design decisions:
+- **Keyed by user ID, not channel ID.** Scheduler creates DM channels on the fly and never exposes the channel ID. User ID is stable across Discord DMs, CLI, and any future frontend.
+- **`agent.RunWithConversation(ctx, userID, message)`** is the single entry point for all conversation-aware callers (Discord handler, scheduler, CLI REPL, pipe mode). Handles: load → gap-detect → summarize → prepend context → run → trim → save.
+- **`agent.Summarize(ctx, messages)`** calls the LLM with a summarization system prompt and no tools.
+- **Gap detection (>10 min):** if enough time has passed since the last message, the old conversation is summarized, the summary is saved, and raw messages are cleared. On failure, raw messages are kept (no data loss).
+- **Recent summaries (up to 3)** are prepended as a synthetic user/assistant context pair that gets stripped before saving.
+- **Discord handlers simplified:** removed in-memory `histories` map and mutex entirely.
+- **Scheduler wired in:** `runSchedule` and `fireReminders` use `RunWithConversation` when `discord_user_id` note exists, falling back to `agent.Run` otherwise.
+- **CLI:** both pipe mode and interactive REPL use `RunWithConversation("cli", ...)` for cross-restart persistence.
 
-Add to `internal/db/queries.go`:
-
-- `SaveConversationSummary(channel, summary string, msgCount int) (int64, error)`
-- `GetRecentConversationSummaries(channel string, limit int) ([]ConversationSummary, error)`
-
-The idea: when a Discord conversation goes quiet (e.g., no messages for 10+ minutes) or hits a length threshold, the agent summarizes the conversation and stores it. On the next message, recent summaries for that channel get loaded into context.
-
-Implementation in `internal/discord/handlers.go`:
-
-- Track last message timestamp per channel
-- Before processing a new message, if it's been >10 minutes since the last one, summarize the old history using the LLM, save it, then start fresh
-- Load the last 2-3 conversation summaries into the prompt as context
-
-This replaces the current in-memory `histories` map as the primary continuity mechanism. The map still holds the current conversation, but summaries survive restarts.
+Files added:
+- `internal/db/queries_conversations.go` — LoadConversation, SaveConversation, ClearConversation, SaveConversationSummary, GetRecentSummaries, PruneOldSummaries
+- `internal/agent/conversation.go` — RunWithConversation, Summarize
+- `internal/db/queries_conversations_test.go` — 7 test cases
 
 ### 2.4 Tests
 
@@ -214,7 +204,14 @@ This replaces the current in-memory `histories` map as the primary continuity me
 - `TestUpdateMemory` — partial field updates
 - `TestDeleteMemory` — delete and verify gone
 - `TestResolveMemory` — verify category changes and content is appended
-- `TestSaveAndGetConversationSummaries` — basic CRUD, channel filtering
+- `TestSaveAndLoadConversation` — round-trip JSON serialization
+- `TestLoadConversationMissing` — returns empty slice + zero time
+- `TestSaveConversationUpsert` — overwrite works
+- `TestClearConversation` — reset to empty
+- `TestSaveAndGetSummaries` — basic CRUD, ordering
+- `TestGetRecentSummariesLimit` — respects limit param
+- `TestGetRecentSummariesDifferentUsers` — user isolation
+- `TestPruneOldSummaries` — deletes old, keeps recent
 
 ---
 
@@ -364,9 +361,9 @@ Final cleanup once Phases 1-3 are working.
 
 No longer applicable — `BuildCheckInPrompt`/`BuildScheduledPrompt` was removed. The LLM can call `list_skills` on its own when relevant.
 
-### 4.2 Prune Old Conversation Summaries ⚠️ BLOCKED on Phase 2
+### 4.2 Prune Old Conversation Summaries
 
-Add a cleanup job: delete conversation summaries older than 30 days. Run this as part of `PruneExpiredMemories` or alongside it.
+Add a cleanup job: delete conversation summaries older than 30 days. `PruneOldSummaries(olderThanDays int)` already exists in `queries_conversations.go` — just needs to be wired into a periodic cron or startup hook.
 
 ### 4.3 Update CLAUDE.md
 
@@ -380,7 +377,7 @@ Add sections for skills, memory improvements, and multi-schedule cron. Update th
 
 Since the schema uses `CREATE TABLE IF NOT EXISTS` and `CREATE TRIGGER IF NOT EXISTS`, existing databases will get the new tables on next startup without losing data. Verify this works by running against a database that already has data in the existing tables.
 
-For FTS5 specifically ⚠️ BLOCKED on Phase 2: if the `memories` table already has rows when the FTS table is first created, the FTS index will be empty. Add a one-time backfill in `db.go` `Open()`:
+For FTS5 specifically: if the `memories` table already has rows when the FTS table is first created, the FTS index will be empty. Add a one-time backfill in `db.go` `Open()`:
 
 ```go
 // Backfill FTS if needed
@@ -427,9 +424,9 @@ Files added/modified:
 ## Implementation Order Summary
 
 1. **Phase 1** (Skills + Time) — ✓ COMPLETE
-2. **Phase 2** (Memory) — 2.1 FTS5 ✓, 2.2 Memory Mgmt ✓, 2.3 Conversation Summaries NOT STARTED
+2. **Phase 2** (Memory) — ✓ COMPLETE (FTS5, Memory Mgmt, Conversation Summaries)
 3. **Phase 3** (Schedules + Reminders) — ✓ COMPLETE
-4. **Phase 4** (Polish) — 4.2 BLOCKED on 2.3, 4.3/4.4 not started, 4.5 FTS part BLOCKED on 2.3, 4.6 Reminder DM Delivery not started, 4.7 not started
+4. **Phase 4** (Polish) — 4.2 PruneOldSummaries needs cron wiring, 4.3/4.4 not started, 4.6 Reminder DM Delivery not started, 4.7 not started
 5. **Phase 5** (Habit Tracking) — ✓ COMPLETE
 
 Each phase should end with `go test ./...` passing and a manual test via CLI.

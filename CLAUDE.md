@@ -41,6 +41,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     queries_skills.go        # Skills queries
     queries_schedule.go      # Schedules queries
     queries_reminders.go     # Reminders queries
+    queries_conversations.go # Conversation persistence + summaries
 /internal/llm/
     client.go                # LLMClient interface
     provider.go              # Provider factory (NewClient)
@@ -50,6 +51,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     prompt.go                # System prompt
 /internal/agent/
     agent.go                 # Core agent loop + timezone helpers
+    conversation.go          # RunWithConversation, Summarize (persistent history)
 /internal/discord/
     bot.go                   # Discord bot setup
     handlers.go              # Message handlers
@@ -128,6 +130,22 @@ CREATE TABLE reminders (
     prompt TEXT NOT NULL,
     fire_at TEXT NOT NULL,             -- stored as UTC: "YYYY-MM-DD HH:MM:SS" (agent sends local, system converts)
     fired INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE conversations (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT UNIQUE NOT NULL,      -- discord user ID or "cli"
+    messages TEXT NOT NULL DEFAULT '[]', -- JSON array of llm.Message
+    last_message_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE conversation_summaries (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    message_count INTEGER,
     created_at TEXT DEFAULT (datetime('now'))
 );
 ```
@@ -308,12 +326,15 @@ go build -o agent ./cmd/agent
 ### Phase 4: Memory Improvements (PLAN2.md Phase 2)
 - [x] FTS5 full-text search for memories (virtual table, triggers, backfill)
 - [x] Memory management tools (update_memory, delete_memory, resolve_memory)
-- [ ] Conversation summaries (table, Discord handler rework, auto-summarize)
+- [x] Persistent conversation history (conversations + conversation_summaries tables)
+- [x] Auto-summarization on conversation gaps (>10 min)
+- [x] Scheduler + reminders wired into conversation persistence
 
 ### Phase 5: Polish
 - [x] Remaining tools (ideas, notes)
 - [x] Better context window management
 - [x] Conversation history (how many messages to include)
+- [ ] Prune old conversation summaries (PruneOldSummaries exists, needs cron wiring)
 - [ ] Markdown export command for human review
 - [ ] Start on startup or login
 
