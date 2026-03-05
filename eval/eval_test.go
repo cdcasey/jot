@@ -18,14 +18,14 @@ func TestEval(t *testing.T) {
 	_ = godotenv.Load("../.env")
 
 	agentClient, agentModel := buildClient(t, "LLM_PROVIDER", "LLM_MODEL")
-	judgeClient, _ := buildClient(t, "LLM_EVAL_PROVIDER", "LLM_EVAL_MODEL")
+	judgeClient, judgeModel := buildClient(t, "LLM_EVAL_PROVIDER", "LLM_EVAL_MODEL")
 
 	casesPath := filepath.Join(".", "cases.json")
 	if _, err := os.Stat(casesPath); os.IsNotExist(err) {
 		casesPath = filepath.Join("eval", "cases.json")
 	}
 
-	RunEval(t, casesPath, agentClient, judgeClient, agentModel)
+	RunEval(t, casesPath, agentClient, judgeClient, agentModel, judgeModel)
 }
 
 // buildClient creates an LLM client from the given env var names.

@@ -88,7 +88,7 @@ func LoadCases(path string) ([]EvalCase, error) {
 // RunEval executes all eval cases and prints results.
 // agentClient runs the agent under test; judgeClient scores rubric-based cases.
 // They can be the same client or different (e.g., Haiku as agent, Sonnet as judge).
-func RunEval(t *testing.T, casePath string, agentClient, judgeClient llm.Client, model string) {
+func RunEval(t *testing.T, casePath string, agentClient, judgeClient llm.Client, model, judgeModel string) {
 	cases, err := LoadCases(casePath)
 	if err != nil {
 		t.Fatalf("loading cases: %v", err)
@@ -102,7 +102,7 @@ func RunEval(t *testing.T, casePath string, agentClient, judgeClient llm.Client,
 		})
 	}
 
-	printResults(results, model)
+	printResults(results, model, judgeModel)
 }
 
 func runCase(t *testing.T, ec EvalCase, agentClient, judgeClient llm.Client) CaseResult {
@@ -313,8 +313,10 @@ func judgeResponse(ctx context.Context, client llm.Client, prompt, response, rub
 	return verdict.Score, verdict.Reasoning, nil
 }
 
-func printResults(results []CaseResult, model string) {
-	fmt.Printf("\nEVAL RESULTS (model: %s)\n", model)
+func printResults(results []CaseResult, model, judgeModel string) {
+	fmt.Println()
+	fmt.Printf("  Model: %s\n", model)
+	fmt.Printf("  Judge: %s\n", judgeModel)
 	fmt.Println("──────────────────────────────────────────────────────────────")
 
 	var toolPass, toolTotal int
