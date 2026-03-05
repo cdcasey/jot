@@ -59,6 +59,10 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     scheduler.go             # Cron for check-ins
 /config/
     config.go                # Environment/config loading
+/eval/
+    eval.go                  # Eval runner, seeder, asserter, LLM-as-judge
+    eval_test.go             # Test entry point (guarded by RUN_EVAL=1)
+    cases.json               # Eval cases — edit without touching Go
 ```
 
 ## Database Schema
@@ -209,6 +213,10 @@ DISCORD_WEBHOOK_URL=...        # For outbound notifications
 DATABASE_PATH=./data.db        # SQLite file location
 CHECK_IN_CRON="0 9 * * *"      # Daily at 9am (optional)
 MAX_CONTEXT_TOKENS=180000      # Token budget for LLM context (default: 180000)
+
+# Eval-specific (optional, fall back to LLM_PROVIDER/LLM_MODEL)
+LLM_EVAL_PROVIDER=anthropic    # Provider for the LLM-as-judge
+LLM_EVAL_MODEL=claude-sonnet-4-5-20250514  # Model for the LLM-as-judge
 ```
 
 ## Multi-Provider LLM Support
@@ -298,6 +306,13 @@ go build -o agent ./cmd/agent
 
 # Run
 ./agent
+
+# Run evals (requires LLM API key)
+make eval
+
+# Run evals with specific models
+LLM_MODEL=claude-haiku-3-5-20241022 make eval
+LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 make eval
 ```
 
 ## Development Phases
@@ -357,10 +372,11 @@ go build -o agent ./cmd/agent
 ## Testing
 
 ```bash
-go test ./...
+go test ./...      # Unit tests (no API calls)
+make eval          # LLM eval suite (hits real API)
 ```
 
-For integration tests with the LLM, use a test flag or separate build tag to avoid API calls in CI.
+Unit tests use in-memory SQLite and run without network access. The eval suite (`eval/`) runs the agent against a real LLM with an in-memory DB per case, then scores responses via tool-call assertions and LLM-as-judge. Eval cases are defined in `eval/cases.json` — edit without touching Go code. Guarded by `RUN_EVAL=1` so `go test ./...` skips them.
 
 ## Useful Commands During Development
 
