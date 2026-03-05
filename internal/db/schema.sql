@@ -11,12 +11,6 @@ CREATE TABLE IF NOT EXISTS things (
     completed_at TEXT
 );
 
-CREATE TABLE IF NOT EXISTS check_ins (
-    id INTEGER PRIMARY KEY,
-    summary TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
 CREATE TABLE IF NOT EXISTS notes (
     id INTEGER PRIMARY KEY,
     key TEXT UNIQUE NOT NULL,
@@ -56,44 +50,17 @@ CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
     INSERT INTO memories_fts(rowid, content) VALUES (new.id, new.content);
 END;
 
-CREATE TABLE IF NOT EXISTS skills (
-    id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    description TEXT NOT NULL,
-    content TEXT NOT NULL,
-    tags TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
 CREATE TABLE IF NOT EXISTS schedules (
 	id INTEGER PRIMARY KEY,
   name TEXT UNIQUE NOT NULL,
-  cron_expr TEXT NOT NULL,
+  cron_expr TEXT NOT NULL DEFAULT '',
   prompt TEXT NOT NULL,
   enabled INTEGER DEFAULT 1,
   last_run TEXT,
-  created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE IF NOT EXISTS reminders (
-  id INTEGER PRIMARY KEY,
-  prompt TEXT NOT NULL,
-  fire_at TEXT NOT NULL,
+  fire_at TEXT,
   fired INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now'))
 );
-
-CREATE TABLE IF NOT EXISTS habit_logs (
-    id         INTEGER PRIMARY KEY,
-    habit      TEXT NOT NULL,
-    outcome    TEXT NOT NULL CHECK(outcome IN ('done', 'skipped', 'partial')),
-    notes      TEXT,
-    logged_at  TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_habit_logs_habit_date ON habit_logs(habit, logged_at);
 
 CREATE TABLE IF NOT EXISTS conversations (
     id INTEGER PRIMARY KEY,

@@ -7,7 +7,6 @@ import (
 
 var allowedColumns = map[string]map[string]bool{
 	"things":   {"title": true, "notes": true, "status": true, "priority": true, "due_date": true, "tags": true, "completed_at": true},
-	"skills":   {"name": true, "description": true, "content": true, "tags": true},
 	"memories": {"content": true, "category": true, "tags": true, "expires_at": true},
 }
 

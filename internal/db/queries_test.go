@@ -221,37 +221,6 @@ func TestGetSummary(t *testing.T) {
 	}
 }
 
-// --- Check-ins ---
-
-func TestGetLastCheckIn(t *testing.T) {
-	d := openTestDB(t)
-
-	// No check-ins yet
-	summary, date, err := d.GetLastCheckIn()
-	if err != nil {
-		t.Fatalf("GetLastCheckIn (empty): %v", err)
-	}
-	if summary != "" || date != "" {
-		t.Errorf("expected empty, got summary=%q date=%q", summary, date)
-	}
-
-	// Create one
-	_, err = d.CreateCheckIn("everything is fine")
-	if err != nil {
-		t.Fatalf("CreateCheckIn: %v", err)
-	}
-	summary, date, err = d.GetLastCheckIn()
-	if err != nil {
-		t.Fatalf("GetLastCheckIn: %v", err)
-	}
-	if summary != "everything is fine" {
-		t.Errorf("expected %q, got %q", "everything is fine", summary)
-	}
-	if date == "" {
-		t.Error("expected date to be set")
-	}
-}
-
 // --- Memories ---
 
 func TestSaveAndSearchMemories(t *testing.T) {
@@ -525,151 +494,6 @@ func TestResolveMemory(t *testing.T) {
 	}
 }
 
-// --- Skills ---
-
-func TestCreateAndListSkills(t *testing.T) {
-	d := openTestDB(t)
-
-	id, err := d.CreateSkill("cool skill", "skill description", "some fancy skill contents", []string{"go", "ai"})
-	if err != nil {
-		t.Fatalf("CreateSkill: %v", err)
-	}
-
-	skills, err := d.ListSkills("go")
-	if err != nil {
-		t.Fatalf("ListSkills: %v", err)
-	}
-	if len(skills) != 1 {
-		t.Fatalf("expected 1 skill, got %d", len(skills))
-	}
-	if skills[0].ID != id {
-		t.Errorf("expected ID %d, got %d", id, skills[0].ID)
-	}
-	if skills[0].Name != "cool skill" {
-		t.Errorf("expected name %q, got %q", "cool skill", skills[0].Name)
-	}
-	if len(skills[0].Tags) != 2 || skills[0].Tags[0] != "go" || skills[0].Tags[1] != "ai" {
-		t.Errorf("expected tags [go, ai], got %v", skills[0].Tags)
-	}
-}
-
-func TestGetSkillByName(t *testing.T) {
-	d := openTestDB(t)
-
-	d.CreateSkill("my-skill", "a description", "skill content", nil)
-
-	// Found
-	skill, err := d.GetSkill("my-skill")
-	if err != nil {
-		t.Fatalf("GetSkill: %v", err)
-	}
-	if skill == nil {
-		t.Fatal("expected skill, got nil")
-	}
-	if skill.Name != "my-skill" {
-		t.Errorf("expected name %q, got %q", "my-skill", skill.Name)
-	}
-	if skill.Description != "a description" {
-		t.Errorf("expected description %q, got %q", "a description", skill.Description)
-	}
-	if skill.Content != "skill content" {
-		t.Errorf("expected content %q, got %q", "skill content", skill.Content)
-	}
-
-	// Not found
-	skill, err = d.GetSkill("nonexistent")
-	if err != nil {
-		t.Fatalf("GetSkill(nonexistent): %v", err)
-	}
-	if skill != nil {
-		t.Errorf("expected nil for nonexistent skill, got %+v", skill)
-	}
-}
-
-func TestListSkillsFilterByTag(t *testing.T) {
-	d := openTestDB(t)
-
-	d.CreateSkill("skill-1", "desc", "content", []string{"go", "cli"})
-	d.CreateSkill("skill-2", "desc", "content", []string{"python"})
-	d.CreateSkill("skill-3", "desc", "content", nil)
-
-	skills, err := d.ListSkills("go")
-	if err != nil {
-		t.Fatalf("ListSkills(go): %v", err)
-	}
-	if len(skills) != 1 {
-		t.Fatalf("expected 1 skill with tag 'go', got %d", len(skills))
-	}
-	if skills[0].Name != "skill-1" {
-		t.Errorf("expected %q, got %q", "skill-1", skills[0].Name)
-	}
-
-	// No filter returns all
-	skills, err = d.ListSkills("")
-	if err != nil {
-		t.Fatalf("ListSkills(all): %v", err)
-	}
-	if len(skills) != 3 {
-		t.Errorf("expected 3 skills, got %d", len(skills))
-	}
-}
-
-func TestUpdateSkill(t *testing.T) {
-	d := openTestDB(t)
-
-	d.CreateSkill("updatable", "original desc", "original content", []string{"tag1"})
-
-	err := d.UpdateSkill("updatable", map[string]any{"description": "new desc"})
-	if err != nil {
-		t.Fatalf("UpdateSkill: %v", err)
-	}
-
-	skill, _ := d.GetSkill("updatable")
-	if skill.Description != "new desc" {
-		t.Errorf("expected description %q, got %q", "new desc", skill.Description)
-	}
-	// Content should be unchanged
-	if skill.Content != "original content" {
-		t.Errorf("content changed unexpectedly: got %q", skill.Content)
-	}
-}
-
-func TestDeleteSkill(t *testing.T) {
-	d := openTestDB(t)
-
-	d.CreateSkill("to-delete", "desc", "content", nil)
-
-	err := d.DeleteSkill("to-delete")
-	if err != nil {
-		t.Fatalf("DeleteSkill: %v", err)
-	}
-
-	skill, _ := d.GetSkill("to-delete")
-	if skill != nil {
-		t.Errorf("expected skill to be deleted, but found %+v", skill)
-	}
-
-	// Deleting nonexistent should error
-	err = d.DeleteSkill("nonexistent")
-	if err == nil {
-		t.Error("expected error deleting nonexistent skill, got nil")
-	}
-}
-
-func TestCreateSkillDuplicateName(t *testing.T) {
-	d := openTestDB(t)
-
-	_, err := d.CreateSkill("unique-name", "desc", "content", nil)
-	if err != nil {
-		t.Fatalf("first CreateSkill: %v", err)
-	}
-
-	_, err = d.CreateSkill("unique-name", "other desc", "other content", nil)
-	if err == nil {
-		t.Error("expected error creating duplicate skill name, got nil")
-	}
-}
-
 // --- Schedules ---
 
 func TestCreateAndListSchedules(t *testing.T) {
@@ -777,244 +601,135 @@ func TestDeleteSchedule(t *testing.T) {
 	}
 }
 
-// --- Reminders ---
+// --- One-Shot Schedules (Reminders) ---
 
-func TestCreateAndListReminders(t *testing.T) {
+func TestCreateOneShot(t *testing.T) {
 	d := openTestDB(t)
 
 	future := time.Now().UTC().Add(time.Hour).Format(time.DateTime)
-	id, err := d.CreateReminder("check the build", future)
+	id, err := d.CreateOneShot("reminder-dentist", "call the dentist", future)
 	if err != nil {
-		t.Fatalf("CreateReminder: %v", err)
+		t.Fatalf("CreateOneShot: %v", err)
 	}
 
-	reminders, err := d.ListUpcomingReminders()
+	upcoming, err := d.ListUpcomingOneShots()
 	if err != nil {
-		t.Fatalf("ListUpcomingReminders: %v", err)
+		t.Fatalf("ListUpcomingOneShots: %v", err)
 	}
-	if len(reminders) != 1 {
-		t.Fatalf("expected 1 reminder, got %d", len(reminders))
+	if len(upcoming) != 1 {
+		t.Fatalf("expected 1 upcoming one-shot, got %d", len(upcoming))
 	}
-	r := reminders[0]
-	if r.ID != id {
-		t.Errorf("expected ID %d, got %d", id, r.ID)
+	s := upcoming[0]
+	if s.ID != id {
+		t.Errorf("expected ID %d, got %d", id, s.ID)
 	}
-	if r.Prompt != "check the build" {
-		t.Errorf("expected prompt %q, got %q", "check the build", r.Prompt)
+	if s.Prompt != "call the dentist" {
+		t.Errorf("expected prompt %q, got %q", "call the dentist", s.Prompt)
 	}
-	if r.Fired {
-		t.Error("expected reminder to not be fired")
+	if s.Fired {
+		t.Error("expected one-shot to not be fired")
+	}
+	if s.CronExpr != "" {
+		t.Errorf("expected empty cron_expr, got %q", s.CronExpr)
 	}
 }
 
-func TestListPendingReminders(t *testing.T) {
+func TestListPendingOneShots(t *testing.T) {
 	d := openTestDB(t)
 
 	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
 	future := time.Now().UTC().Add(time.Hour).Format(time.DateTime)
 
-	d.CreateReminder("due now", past)
-	d.CreateReminder("not yet", future)
+	d.CreateOneShot("reminder-due", "due now", past)
+	d.CreateOneShot("reminder-future", "not yet", future)
 
-	pending, err := d.ListPendingReminders()
+	pending, err := d.ListPendingOneShots()
 	if err != nil {
-		t.Fatalf("ListPendingReminders: %v", err)
+		t.Fatalf("ListPendingOneShots: %v", err)
 	}
 	if len(pending) != 1 {
-		t.Fatalf("expected 1 pending reminder, got %d", len(pending))
+		t.Fatalf("expected 1 pending one-shot, got %d", len(pending))
 	}
 	if pending[0].Prompt != "due now" {
 		t.Errorf("expected %q, got %q", "due now", pending[0].Prompt)
 	}
 }
 
-func TestListUpcomingReminders(t *testing.T) {
+func TestMarkOneShotFired(t *testing.T) {
 	d := openTestDB(t)
 
 	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
-	future := time.Now().UTC().Add(time.Hour).Format(time.DateTime)
+	id, _ := d.CreateOneShot("reminder-fire", "fire me", past)
 
-	d.CreateReminder("already due", past)
-	d.CreateReminder("upcoming", future)
-
-	upcoming, err := d.ListUpcomingReminders()
+	err := d.MarkOneShotFired(id)
 	if err != nil {
-		t.Fatalf("ListUpcomingReminders: %v", err)
-	}
-	if len(upcoming) != 1 {
-		t.Fatalf("expected 1 upcoming reminder, got %d", len(upcoming))
-	}
-	if upcoming[0].Prompt != "upcoming" {
-		t.Errorf("expected %q, got %q", "upcoming", upcoming[0].Prompt)
-	}
-}
-
-func TestMarkReminderFired(t *testing.T) {
-	d := openTestDB(t)
-
-	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
-	id, _ := d.CreateReminder("fire me", past)
-
-	err := d.MarkReminderFired(id)
-	if err != nil {
-		t.Fatalf("MarkReminderFired: %v", err)
+		t.Fatalf("MarkOneShotFired: %v", err)
 	}
 
-	pending, _ := d.ListPendingReminders()
+	pending, _ := d.ListPendingOneShots()
 	if len(pending) != 0 {
 		t.Errorf("expected 0 pending after firing, got %d", len(pending))
 	}
 }
 
-func TestPendingRemindersExcludesFired(t *testing.T) {
+func TestPendingOneShotsExcludesFired(t *testing.T) {
 	d := openTestDB(t)
 
 	past := time.Now().UTC().Add(-time.Minute).Format(time.DateTime)
-	id, _ := d.CreateReminder("already fired", past)
-	d.MarkReminderFired(id)
-	d.CreateReminder("also due but not fired", past)
+	id, _ := d.CreateOneShot("reminder-fired", "already fired", past)
+	d.MarkOneShotFired(id)
+	d.CreateOneShot("reminder-unfired", "also due but not fired", past)
 
-	pending, err := d.ListPendingReminders()
+	pending, err := d.ListPendingOneShots()
 	if err != nil {
-		t.Fatalf("ListPendingReminders: %v", err)
+		t.Fatalf("ListPendingOneShots: %v", err)
 	}
 	if len(pending) != 1 {
 		t.Fatalf("expected 1 pending, got %d", len(pending))
 	}
 	if pending[0].Prompt != "also due but not fired" {
-		t.Errorf("expected unfired reminder, got %q", pending[0].Prompt)
+		t.Errorf("expected unfired one-shot, got %q", pending[0].Prompt)
 	}
 }
 
-// --- Habits ---
-
-func TestLogAndListHabits(t *testing.T) {
+func TestListSchedulesIncludesOneShots(t *testing.T) {
 	d := openTestDB(t)
 
-	today := time.Now().Format("2006-01-02")
-	d.LogHabit("gym", "done", "", today)
-	d.LogHabit("gym", "done", "morning session", today)
-	d.LogHabit("meditation", "skipped", "too tired", today)
+	future := time.Now().UTC().Add(time.Hour).Format(time.DateTime)
+	d.CreateSchedule("daily-review", "0 9 * * *", "Do a daily review.")
+	d.CreateOneShot("reminder-call", "call mom", future)
 
-	habits, err := d.ListHabits()
+	schedules, err := d.ListSchedules(false)
 	if err != nil {
-		t.Fatalf("ListHabits: %v", err)
+		t.Fatalf("ListSchedules: %v", err)
 	}
-	if len(habits) != 2 {
-		t.Fatalf("expected 2 habits, got %d", len(habits))
-	}
-	// Both should show activity in last 7 days
-	for _, h := range habits {
-		if h.Last7Days == 0 {
-			t.Errorf("expected last_7_days > 0 for %q", h.Habit)
-		}
-		if h.LastLogged != today {
-			t.Errorf("expected last_logged %q for %q, got %q", today, h.Habit, h.LastLogged)
-		}
+	if len(schedules) != 2 {
+		t.Fatalf("expected 2 schedules (1 cron + 1 one-shot), got %d", len(schedules))
 	}
 }
 
-func TestGetHabitStatsBasic(t *testing.T) {
+func TestGetScheduleByName(t *testing.T) {
 	d := openTestDB(t)
 
-	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
-	d.LogHabit("gym", "done", "", "2026-02-25")
-	d.LogHabit("gym", "done", "", "2026-02-26")
-	d.LogHabit("gym", "done", "", "2026-02-27")
+	d.CreateSchedule("my-schedule", "0 9 * * *", "test prompt")
 
-	stats, err := d.GetHabitStats("gym", 14, today)
+	s, err := d.GetScheduleByName("my-schedule")
 	if err != nil {
-		t.Fatalf("GetHabitStats: %v", err)
+		t.Fatalf("GetScheduleByName: %v", err)
 	}
-	if stats.DoneCount != 3 {
-		t.Errorf("expected done_count 3, got %d", stats.DoneCount)
+	if s == nil {
+		t.Fatal("expected schedule, got nil")
 	}
-	if stats.CurrentStreak != 3 {
-		t.Errorf("expected current_streak 3, got %d", stats.CurrentStreak)
+	if s.Name != "my-schedule" {
+		t.Errorf("expected name %q, got %q", "my-schedule", s.Name)
 	}
-	if stats.LongestStreak != 3 {
-		t.Errorf("expected longest_streak 3, got %d", stats.LongestStreak)
-	}
-	if len(stats.RecentLogs) != 3 {
-		t.Errorf("expected 3 recent logs, got %d", len(stats.RecentLogs))
-	}
-}
 
-func TestStreakBreak(t *testing.T) {
-	d := openTestDB(t)
-
-	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
-	d.LogHabit("gym", "done", "", "2026-02-25")
-	d.LogHabit("gym", "skipped", "", "2026-02-26")
-	d.LogHabit("gym", "done", "", "2026-02-27")
-
-	stats, err := d.GetHabitStats("gym", 14, today)
+	// Not found
+	s, err = d.GetScheduleByName("nonexistent")
 	if err != nil {
-		t.Fatalf("GetHabitStats: %v", err)
+		t.Fatalf("GetScheduleByName(missing): %v", err)
 	}
-	if stats.CurrentStreak != 1 {
-		t.Errorf("expected current_streak 1 after break, got %d", stats.CurrentStreak)
-	}
-	if stats.LongestStreak != 1 {
-		t.Errorf("expected longest_streak 1, got %d", stats.LongestStreak)
-	}
-}
-
-func TestStreakNotLiveWhenOld(t *testing.T) {
-	d := openTestDB(t)
-
-	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
-	d.LogHabit("gym", "done", "", "2026-02-17") // 10 days ago
-
-	stats, err := d.GetHabitStats("gym", 14, today)
-	if err != nil {
-		t.Fatalf("GetHabitStats: %v", err)
-	}
-	if stats.CurrentStreak != 0 {
-		t.Errorf("expected current_streak 0 for old log, got %d", stats.CurrentStreak)
-	}
-	if stats.LongestStreak != 1 {
-		t.Errorf("expected longest_streak 1, got %d", stats.LongestStreak)
-	}
-}
-
-func TestDuplicateSameDayCountsOnce(t *testing.T) {
-	d := openTestDB(t)
-
-	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
-	d.LogHabit("gym", "done", "morning", "2026-02-27")
-	d.LogHabit("gym", "done", "evening", "2026-02-27")
-
-	stats, err := d.GetHabitStats("gym", 14, today)
-	if err != nil {
-		t.Fatalf("GetHabitStats: %v", err)
-	}
-	// DoneCount counts rows (2 logs), but streak should treat as 1 day
-	if stats.CurrentStreak != 1 {
-		t.Errorf("expected current_streak 1 for duplicate same-day, got %d", stats.CurrentStreak)
-	}
-	if stats.LongestStreak != 1 {
-		t.Errorf("expected longest_streak 1 for duplicate same-day, got %d", stats.LongestStreak)
-	}
-}
-
-func TestGetHabitStatsEmpty(t *testing.T) {
-	d := openTestDB(t)
-
-	today := time.Date(2026, 2, 27, 12, 0, 0, 0, time.UTC)
-	stats, err := d.GetHabitStats("nonexistent", 14, today)
-	if err != nil {
-		t.Fatalf("GetHabitStats(empty): %v", err)
-	}
-	if stats.DoneCount != 0 || stats.SkippedCount != 0 || stats.PartialCount != 0 {
-		t.Errorf("expected zero counts, got done=%d skipped=%d partial=%d",
-			stats.DoneCount, stats.SkippedCount, stats.PartialCount)
-	}
-	if stats.CurrentStreak != 0 || stats.LongestStreak != 0 {
-		t.Errorf("expected zero streaks, got current=%d longest=%d",
-			stats.CurrentStreak, stats.LongestStreak)
-	}
-	if len(stats.RecentLogs) != 0 {
-		t.Errorf("expected 0 recent logs, got %d", len(stats.RecentLogs))
+	if s != nil {
+		t.Errorf("expected nil for nonexistent, got %+v", s)
 	}
 }

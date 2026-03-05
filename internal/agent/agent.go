@@ -165,25 +165,6 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 	case "get_summary":
 		result, err = a.db.GetSummary()
 
-	case "get_note":
-		key, _ := getString(params, "key")
-		val, e := a.db.GetNote(key)
-		if e != nil {
-			err = e
-		} else if val == "" {
-			result = map[string]any{"value": nil, "message": "no note found for this key"}
-		} else {
-			result = map[string]any{"value": val}
-		}
-
-	case "set_note":
-		key, _ := getString(params, "key")
-		value, _ := getString(params, "value")
-		err = a.db.SetNote(key, value)
-		if err == nil {
-			result = map[string]any{"status": "saved"}
-		}
-
 	case "save_memory":
 		content, _ := getString(params, "content")
 		category, _ := getString(params, "category")
@@ -266,92 +247,44 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		weekday := now.Weekday().String()
 		result = map[string]any{"local": formattedLocal, "utc": formattedUTC, "date": date, "day": weekday}
 
-	case "create_skill":
-		name, _ := getString(params, "name")
-		description, _ := getString(params, "description")
-		content, _ := getString(params, "content")
-		var tags []string
-		if v, ok := params["tags"]; ok {
-			if arr, ok := v.([]any); ok {
-				for _, t := range arr {
-					if s, ok := t.(string); ok {
-						tags = append(tags, s)
-					}
-				}
-			}
-		}
-		id, e := a.db.CreateSkill(name, description, content, tags)
-		if e != nil {
-			err = e
-		} else {
-			result = map[string]any{"id": id, "status": "created"}
-		}
-
-	case "get_skill":
-		name, _ := getString(params, "name")
-		skill, e := a.db.GetSkill(name)
-		if e != nil {
-			err = e
-		} else if skill == nil {
-			result = map[string]any{"error": "skill not found", "name": name}
-		} else {
-			result = skill
-		}
-
-	case "list_skills":
-		tag, _ := getString(params, "tag")
-		result, err = a.db.ListSkills(tag)
-
-	case "update_skill":
-		name, _ := getString(params, "name")
-		fields := make(map[string]any)
-		for _, k := range []string{"description", "content", "tags"} {
-			if v, ok := params[k]; ok {
-				fields[k] = v
-			}
-		}
-		err = a.db.UpdateSkill(name, fields)
-		if err == nil {
-			result = map[string]any{"status": "updated"}
-		}
-
-	case "delete_skill":
-		name, _ := getString(params, "name")
-		err = a.db.DeleteSkill(name)
-		if err == nil {
-			result = map[string]any{"status": "deleted"}
-		}
-
 	case "list_schedules":
 		result, err = a.db.ListSchedules(false)
 
 	case "create_schedule":
 		name, _ := getString(params, "name")
-		cronExpr, _ := getString(params, "cron_expr")
 		prompt, _ := getString(params, "prompt")
-		id, e := a.db.CreateSchedule(name, cronExpr, prompt)
-		if e != nil {
-			err = e
+		fireAt, hasFireAt := getString(params, "fire_at")
+		cronExpr, _ := getString(params, "cron_expr")
+		if hasFireAt && fireAt != "" {
+			// One-shot reminder
+			fireAtUTC, convertErr := a.localToUTC(fireAt)
+			if convertErr != nil {
+				err = convertErr
+			} else {
+				id, e := a.db.CreateOneShot(name, prompt, fireAtUTC)
+				if e != nil {
+					err = e
+				} else {
+					result = map[string]any{"id": id, "status": "created", "fire_at_utc": fireAtUTC}
+				}
+			}
 		} else {
-			result = map[string]any{"id": id, "status": "created"}
+			id, e := a.db.CreateSchedule(name, cronExpr, prompt)
+			if e != nil {
+				err = e
+			} else {
+				result = map[string]any{"id": id, "status": "created"}
+			}
 		}
 
-	// ListSchedules works for now. Create GetScheduleByName if schedules gets too big.
 	case "update_schedule":
 		name, _ := getString(params, "name")
-		sched, e := a.db.ListSchedules(false)
+		sched, e := a.db.GetScheduleByName(name)
 		if e != nil {
 			err = e
 			break
 		}
-		var schedID int64
-		for _, s := range sched {
-			if s.Name == name {
-				schedID = s.ID
-				break
-			}
-		}
-		if schedID == 0 {
+		if sched == nil {
 			result = map[string]any{"error": "schedule not found: " + name}
 			break
 		}
@@ -371,7 +304,7 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 				}
 			}
 		}
-		err = a.db.UpdateSchedule(schedID, fields)
+		err = a.db.UpdateSchedule(sched.ID, fields)
 		if err == nil {
 			result = map[string]any{"status": "updated"}
 		}
@@ -382,63 +315,6 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		if err == nil {
 			result = map[string]any{"status": "deleted"}
 		}
-
-	case "create_reminder":
-		prompt, _ := getString(params, "prompt")
-		fireAt, _ := getString(params, "fire_at")
-		fireAtUTC, convertErr := a.localToUTC(fireAt)
-		if convertErr != nil {
-			err = convertErr
-		} else {
-			id, e := a.db.CreateReminder(prompt, fireAtUTC)
-			if e != nil {
-				err = e
-			} else {
-				result = map[string]any{"id": id, "status": "created", "fire_at_utc": fireAtUTC}
-			}
-		}
-
-	case "list_reminders":
-		includeFired, _ := params["include_fired"].(bool)
-		if includeFired {
-			result, err = a.db.ListAllReminders()
-		} else {
-			result, err = a.db.ListUpcomingReminders()
-		}
-
-	case "cancel_reminder":
-		id, _ := getInt(params, "id")
-		err = a.db.MarkReminderFired(id)
-		if err == nil {
-			result = map[string]any{"status": "cancelled"}
-		}
-
-	case "log_habit":
-		habit, _ := getString(params, "habit")
-		outcome, _ := getString(params, "outcome")
-		notes, _ := getString(params, "notes")
-		loggedAt, _ := getString(params, "logged_at")
-		if loggedAt == "" {
-			loggedAt = time.Now().In(a.userLocation()).Format("2006-01-02")
-		}
-		id, e := a.db.LogHabit(habit, outcome, notes, loggedAt)
-		if e != nil {
-			err = e
-		} else {
-			result = map[string]any{"id": id, "status": "logged", "logged_at": loggedAt}
-		}
-
-	case "get_habit_stats":
-		habit, _ := getString(params, "habit")
-		days, ok := getInt(params, "days")
-		if !ok || days <= 0 {
-			days = 14
-		}
-		today := time.Now().In(a.userLocation())
-		result, err = a.db.GetHabitStats(habit, int(days), today)
-
-	case "list_habits":
-		result, err = a.db.ListHabits()
 
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}

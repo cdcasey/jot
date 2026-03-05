@@ -18,7 +18,7 @@
       }
     },
     "assert": {
-      "tool_called": ["get_time", "create_reminder"],
+      "tool_called": ["get_time", "create_schedule"],
       "tool_not_called": ["create_thing"]
     }
   },

@@ -1,32 +1,9 @@
 package db
 
 import (
-	"database/sql"
 	"encoding/json"
 	"fmt"
 )
-
-// CreateCheckIn stores a check-in summary.
-func (d *DB) CreateCheckIn(summary string) (int64, error) {
-	res, err := d.conn.Exec("INSERT INTO check_ins (summary) VALUES (?)", summary)
-	if err != nil {
-		return 0, fmt.Errorf("creating check-in: %w", err)
-	}
-	return res.LastInsertId()
-}
-
-// GetLastCheckIn returns the most recent check-in summary and date.
-func (d *DB) GetLastCheckIn() (string, string, error) {
-	var summary, createdAt string
-	err := d.conn.QueryRow("SELECT summary, created_at FROM check_ins ORDER BY created_at DESC LIMIT 1").Scan(&summary, &createdAt)
-	if err == sql.ErrNoRows {
-		return "", "", nil
-	}
-	if err != nil {
-		return "", "", fmt.Errorf("getting last check-in: %w", err)
-	}
-	return summary, createdAt, nil
-}
 
 // SaveMemory stores a new memory and returns its ID.
 func (d *DB) SaveMemory(content, category, source string, tags []string, thingID *int64, expiresAt string) (int64, error) {

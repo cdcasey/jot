@@ -36,11 +36,9 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     queries.go               # Struct type definitions
     queries_helpers.go       # Shared helpers (updateRow, nullStr, allowedColumns)
     queries_things.go        # Things + Summary queries
-    queries_notes.go         # Notes queries
-    queries_memories.go      # Memories + check-in queries
-    queries_skills.go        # Skills queries
-    queries_schedule.go      # Schedules queries
-    queries_reminders.go     # Reminders queries
+    queries_notes.go         # Notes queries (internal config only, not exposed as LLM tools)
+    queries_memories.go      # Memories queries
+    queries_schedule.go      # Schedules + one-shot reminders queries
     queries_conversations.go # Conversation persistence + summaries
 /internal/llm/
     client.go                # LLMClient interface
@@ -81,13 +79,7 @@ CREATE TABLE things (
     completed_at TEXT
 );
 
-CREATE TABLE check_ins (
-    id INTEGER PRIMARY KEY,
-    summary TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE notes (
+CREATE TABLE notes (                  -- Internal config only (timezone, discord_user_id). Not exposed as LLM tools.
     id INTEGER PRIMARY KEY,
     key TEXT UNIQUE NOT NULL,
     value TEXT NOT NULL,
@@ -97,7 +89,7 @@ CREATE TABLE notes (
 CREATE TABLE memories (
     id INTEGER PRIMARY KEY,
     content TEXT NOT NULL,
-    category TEXT NOT NULL DEFAULT 'observation',
+    category TEXT NOT NULL DEFAULT 'observation',  -- observation, decision, blocker, preference, event, reflection, habit
     tags TEXT,                         -- JSON array
     thing_id INTEGER REFERENCES things(id),
     source TEXT NOT NULL DEFAULT 'agent',
@@ -109,31 +101,15 @@ CREATE TABLE memories (
 -- FTS5 full-text search index (content-sync'd with memories table via triggers)
 CREATE VIRTUAL TABLE memories_fts USING fts5(content, content_rowid='id', content='memories');
 
-CREATE TABLE skills (
+CREATE TABLE schedules (              -- Unified: recurring (cron) + one-shot reminders (fire_at)
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
-    description TEXT NOT NULL,
-    content TEXT NOT NULL,
-    tags TEXT,                         -- JSON array
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE schedules (
-    id INTEGER PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL,
-    cron_expr TEXT NOT NULL,
+    cron_expr TEXT NOT NULL DEFAULT '',
     prompt TEXT NOT NULL,
     enabled INTEGER DEFAULT 1,
     last_run TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE reminders (
-    id INTEGER PRIMARY KEY,
-    prompt TEXT NOT NULL,
-    fire_at TEXT NOT NULL,             -- stored as UTC: "YYYY-MM-DD HH:MM:SS" (agent sends local, system converts)
-    fired INTEGER DEFAULT 0,
+    fire_at TEXT,                      -- For one-shot reminders: UTC datetime. NULL for recurring.
+    fired INTEGER DEFAULT 0,          -- For one-shot: 1 when fired.
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -154,40 +130,32 @@ CREATE TABLE conversation_summaries (
 );
 ```
 
-## LLM Tools
+## LLM Tools (15 total)
 
 The agent has exactly these tools - no more, no less:
 
-### Thing Tools
+### Thing Tools (5)
 - `list_things` - List things, optionally filtered by status, priority, tag
 - `create_thing` - Create a new thing (title required; notes, priority, due_date, tags optional)
 - `update_thing` - Update a thing by id (any field except id and created_at)
 - `complete_thing` - Mark a thing as done
 - `get_summary` - Returns open things count, overdue things, recent activity
 
-### Notes & Memory Tools
-- `get_note` - Retrieve a stored note by key
-- `set_note` - Store or update a note (agent's scratchpad memory)
-- `save_memory` - Save a timestamped memory (events, decisions, blockers)
+### Memory Tools (5)
+- `save_memory` - Save a timestamped memory (events, decisions, blockers, habits)
 - `search_memories` - Search past memories by text (FTS5), category, tag, thing, or date
 - `list_recent_memories` - List most recent memories
 - `update_memory` - Update a memory by ID (content, category, tags, expires_at)
 - `delete_memory` - Delete a memory by ID
 
-### Utility Tools
-- `get_time` - Get the current time (respects user's timezone note; falls back to server local)
-- `create_skill` / `get_skill` / `list_skills` / `update_skill` / `delete_skill` - Manage reusable skills
-
-### Schedule Tools
-- `list_schedules` - List all recurring scheduled tasks
-- `create_schedule` - Create a recurring task (name, cron_expr, prompt required)
+### Schedule Tools (4)
+- `list_schedules` - List all schedules (recurring + one-shot reminders)
+- `create_schedule` - Create a recurring schedule (cron_expr) or one-shot reminder (fire_at)
 - `update_schedule` - Update cron_expr, prompt, or enabled flag by name
 - `delete_schedule` - Delete a schedule by name
 
-### Reminder Tools
-- `create_reminder` - Create a one-shot reminder (prompt, fire_at in local time; system converts to UTC)
-- `list_reminders` - List upcoming unfired reminders
-- `cancel_reminder` - Cancel a reminder by id
+### Utility Tools (1)
+- `get_time` - Get the current time (respects user's timezone note; falls back to server local)
 
 ## System Prompt Guidelines
 
@@ -195,7 +163,7 @@ The agent should:
 - Be helpful but concise - no unnecessary chatter
 - Proactively use tools to check state before answering questions about things
 - Everything is a "thing" — use tags for categorization, status and priority for state
-- Remember context across conversations using notes and memories
+- Remember context across conversations using memories
 - During check-ins: summarize open things, mention overdue items, ask about priorities
 - Not be annoying - check-ins should be useful, not nagging
 - Admit when it doesn't know something rather than making things up
@@ -321,7 +289,7 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] SQLite schema and migrations
 - [x] Database query functions
 - [x] Anthropic client with tool calling
-- [x] Core tools (5 thing tools + notes + memory + skills + time)
+- [x] Core tools (5 thing tools + memory + time)
 - [x] CLI mode for testing: `echo "track a thing: buy milk" | ./agent`
 
 ### Phase 2: Discord
@@ -333,7 +301,7 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] Internal cron scheduler
 - [x] Check-in logic (build context, send to LLM, post to Discord)
 - [x] DB-driven multi-schedule cron (schedules table, agent-manageable)
-- [x] One-shot reminders with 60s polling ticker
+- [x] One-shot reminders unified into schedules table (fire_at column)
 - [x] CHECK_IN_CRON demoted to seed fallback
 - [x] Schedules send prompt directly to agent (no forced check-in context)
 - [x] Timezone-aware reminders (local→UTC conversion via `timezone` note)
@@ -345,13 +313,14 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] Auto-summarization on conversation gaps (>10 min)
 - [x] Scheduler + reminders wired into conversation persistence
 
-### Phase 5: Polish
-- [x] Remaining tools (ideas, notes)
-- [x] Better context window management
-- [x] Conversation history (how many messages to include)
+### Phase 5: Simplification
+- [x] Removed skills (5 tools, 1 table)
+- [x] Removed habits (3 tools, 1 table) — use memories with category='habit'
+- [x] Removed check_ins (dead table)
+- [x] Merged reminders into schedules (3 tools removed)
+- [x] Hid notes from LLM (2 tools removed, table kept for internal config)
 - [ ] Prune old conversation summaries (PruneOldSummaries exists, needs cron wiring)
-- [ ] Markdown export command for human review
-- [ ] Start on startup or login
+- [ ] Migrate notes table to .env config
 
 ## Code Style
 

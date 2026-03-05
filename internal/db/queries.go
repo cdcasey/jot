@@ -30,56 +30,14 @@ type Summary struct {
 	RecentThings  []Thing `json:"recent_things,omitempty"`
 }
 
-type Skill struct {
-	ID          int64    `json:"id"`
-	Name        string   `json:"name"`
-	Description string   `json:"description,omitempty"`
-	Content     string   `json:"content"`
-	Tags        []string `json:"tags,omitempty"`
-	CreatedAt   string   `json:"created_at"`
-	UpdatedAt   string   `json:"updated_at"`
-}
-
 type Schedule struct {
 	ID        int64  `json:"id"`
 	Name      string `json:"name"`
-	CronExpr  string `json:"cron_expr"`
+	CronExpr  string `json:"cron_expr,omitempty"`
 	Prompt    string `json:"prompt"`
 	Enabled   bool   `json:"enabled"`
 	LastRun   string `json:"last_run,omitempty"`
+	FireAt    string `json:"fire_at,omitempty"`
+	Fired     bool   `json:"fired,omitempty"`
 	CreatedAt string `json:"created_at"`
-}
-
-type Reminder struct {
-	ID        int64  `json:"id"`
-	Prompt    string `json:"prompt"`
-	FireAt    string `json:"fire_at"`
-	Fired     bool   `json:"fired"`
-	CreatedAt string `json:"created_at"`
-}
-
-type HabitLog struct {
-	ID        int64  `json:"id"`
-	Habit     string `json:"habit"`
-	Outcome   string `json:"outcome"`
-	Notes     string `json:"notes,omitempty"`
-	LoggedAt  string `json:"logged_at"`
-	CreatedAt string `json:"created_at"`
-}
-
-type HabitStats struct {
-	Habit         string     `json:"habit"`
-	Days          int        `json:"days"`
-	DoneCount     int        `json:"done_count"`
-	SkippedCount  int        `json:"skipped_count"`
-	PartialCount  int        `json:"partial_count"`
-	CurrentStreak int        `json:"current_streak"`
-	LongestStreak int        `json:"longest_streak"`
-	RecentLogs    []HabitLog `json:"recent_logs"`
-}
-
-type HabitSummary struct {
-	Habit      string `json:"habit"`
-	Last7Days  int    `json:"last_7_days"`
-	LastLogged string `json:"last_logged"`
 }

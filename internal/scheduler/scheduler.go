@@ -104,6 +104,10 @@ func (s *Scheduler) loadSchedules() {
 	s.entryIDs = make(map[int64]cron.EntryID)
 
 	for _, sched := range schedules {
+		// Skip one-shot schedules — they're handled by the polling ticker, not cron.
+		if sched.FireAt != "" {
+			continue
+		}
 		entryID, err := s.cron.AddFunc(sched.CronExpr, func() {
 			s.runSchedule(sched)
 		})
@@ -136,19 +140,15 @@ func (s *Scheduler) runSchedule(sched db.Schedule) {
 		log.Printf("scheduler[%s]: recording run: %v", sched.Name, err)
 	}
 
-	if _, err := s.db.CreateCheckIn(reply); err != nil {
-		log.Printf("scheduler[%s]: storing check-in: %v", sched.Name, err)
-	}
-
 	s.deliver(fmt.Sprintf("scheduler[%s]", sched.Name), reply)
 
 	log.Printf("scheduler[%s]: completed", sched.Name)
 }
 
 func (s *Scheduler) fireReminders() {
-	pending, err := s.db.ListPendingReminders()
+	pending, err := s.db.ListPendingOneShots()
 	if err != nil {
-		log.Printf("scheduler: listing reminders: %v", err)
+		log.Printf("scheduler: listing one-shots: %v", err)
 		return
 	}
 	for _, r := range pending {
@@ -161,14 +161,14 @@ func (s *Scheduler) fireReminders() {
 			reply, _, err = s.agent.Run(context.Background(), nil, msg)
 		}
 		if err != nil {
-			log.Printf("scheduler: reminder %d agent error: %v", r.ID, err)
+			log.Printf("scheduler: one-shot %d agent error: %v", r.ID, err)
 			continue
 		}
-		if err := s.db.MarkReminderFired(r.ID); err != nil {
-			log.Printf("scheduler: marking reminder %d fired: %v", r.ID, err)
+		if err := s.db.MarkOneShotFired(r.ID); err != nil {
+			log.Printf("scheduler: marking one-shot %d fired: %v", r.ID, err)
 		}
 		s.deliver(fmt.Sprintf("reminder[%d]", r.ID), reply)
-		log.Printf("scheduler: fired reminder %d", r.ID)
+		log.Printf("scheduler: fired one-shot %d", r.ID)
 	}
 }
 
