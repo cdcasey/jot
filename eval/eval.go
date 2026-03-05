@@ -94,6 +94,27 @@ func RunEval(t *testing.T, casePath string, agentClient, judgeClient llm.Client,
 		t.Fatalf("loading cases: %v", err)
 	}
 
+	// Preflight: verify both models are reachable before running cases.
+	ctx := context.Background()
+	ping := []llm.Message{{Role: "user", Content: "ping"}}
+
+	if _, err := agentClient.Chat(ctx, "Respond with pong.", ping, nil); err != nil {
+		t.Fatalf("agent model %q not reachable: %v", model, err)
+	}
+
+	hasJudge := false
+	for _, ec := range cases {
+		if ec.Assert.Rubric != "" {
+			hasJudge = true
+			break
+		}
+	}
+	if hasJudge {
+		if _, err := judgeClient.Chat(ctx, "Respond with pong.", ping, nil); err != nil {
+			t.Fatalf("judge model %q not reachable: %v", judgeModel, err)
+		}
+	}
+
 	var results []CaseResult
 	for _, ec := range cases {
 		t.Run(ec.Name, func(t *testing.T) {
