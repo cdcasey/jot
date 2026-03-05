@@ -72,10 +72,30 @@ Set `DISCORD_WEBHOOK_URL` in `.env` for webhook delivery. `CHECK_IN_CRON` seeds 
 ## Testing
 
 ```bash
-go test ./...
+go test ./...      # Unit tests (no API calls)
+make eval          # LLM eval suite (hits real API)
 ```
 
-Tests cover the database layer (CRUD, filtering, FTS5 search, memory expiry), LLM token management and message trimming, agent param extraction helpers, and Discord message utilities.
+Unit tests cover the database layer, LLM token management, agent param helpers, and Discord utilities.
+
+### Eval Suite
+
+The eval runner (`eval/`) tests the agent end-to-end against a real LLM. Each case gets a fresh in-memory DB seeded with test data — nothing touches `data.db`.
+
+Three eval categories:
+- **Tool reliability** (pass/fail) — did the agent call the right tools?
+- **Context integration** (1-5) — did it synthesize seeded data correctly?
+- **Reasoning** (1-5) — did it engage meaningfully with tradeoffs?
+
+Scored cases use LLM-as-judge. Edit `eval/cases.json` to add or modify cases without touching Go.
+
+```bash
+# Test with a specific model
+LLM_MODEL=claude-haiku-3-5-20241022 make eval
+
+# Use a different judge model
+LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 make eval
+```
 
 ## Data
 

@@ -1,4 +1,4 @@
-.PHONY: build test clean run
+.PHONY: build test clean run eval
 
 build:
 	go build -o jot ./cmd/agent
@@ -14,3 +14,6 @@ clean:
 
 run: build
 	./jot
+
+eval:
+	RUN_EVAL=1 go test ./eval/... -v -count=1 -timeout 300s
