@@ -6,12 +6,16 @@ import (
 	"testing"
 
 	"github.com/chris/jot/internal/llm"
+	"github.com/joho/godotenv"
 )
 
 func TestEval(t *testing.T) {
 	if os.Getenv("RUN_EVAL") == "" {
 		t.Skip("skipping eval (set RUN_EVAL=1 or use `make eval`)")
 	}
+
+	// Load .env from project root (same as the main app).
+	_ = godotenv.Load("../.env")
 
 	agentClient, agentModel := buildClient(t, "LLM_PROVIDER", "LLM_MODEL")
 	judgeClient, _ := buildClient(t, "LLM_EVAL_PROVIDER", "LLM_EVAL_MODEL")
