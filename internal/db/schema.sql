@@ -94,3 +94,19 @@ CREATE TABLE IF NOT EXISTS habit_logs (
 );
 
 CREATE INDEX IF NOT EXISTS idx_habit_logs_habit_date ON habit_logs(habit, logged_at);
+
+CREATE TABLE IF NOT EXISTS conversations (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT UNIQUE NOT NULL,
+    messages TEXT NOT NULL DEFAULT '[]',
+    last_message_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS conversation_summaries (
+    id INTEGER PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    message_count INTEGER,
+    created_at TEXT DEFAULT (datetime('now'))
+);
