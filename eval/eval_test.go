@@ -51,8 +51,11 @@ func buildClient(t *testing.T, providerVar, modelVar string) (llm.Client, string
 		APIKey:    os.Getenv("ANTHROPIC_API_KEY"),
 		AuthToken: os.Getenv("ANTHROPIC_AUTH_TOKEN"),
 	}
-	if provider == "openai" {
+	switch provider {
+	case "openai":
 		cfg.APIKey = os.Getenv("OPENAI_API_KEY")
+	case "ollama":
+		cfg.BaseURL = envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 	}
 
 	client, err := llm.NewClient(cfg)
