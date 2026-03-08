@@ -48,10 +48,10 @@ var AgentTools = []Tool{
 	},
 	{
 		Name:        "save_memory",
-		Description: "Save a memory for future reference. Use this to remember important context, decisions, blockers, user preferences, or events. Be specific and include temporal context (e.g. 'as of Feb 2026'). Choose the right category.",
+		Description: "Save a memory for future reference. Use this to remember important context, decisions, blockers, user preferences, or events. Be specific and include temporal context (e.g. 'as of Feb 2026'). Choose the right category. Use category 'habit' to log recurring activity entries like 'gym: done' or 'meditation: skipped'.",
 		Parameters: objReq(map[string]any{
 			"content":    prop("string", "What to remember. Write a clear, specific sentence."),
-			"category":   prop("string", "One of: observation, decision, blocker, preference, event, reflection"),
+			"category":   prop("string", "One of: observation, decision, blocker, preference, event, reflection, habit"),
 			"tags":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Freeform tags for retrieval"},
 			"thing_id":   prop("integer", "Optional thing ID to link to"),
 			"expires_at": prop("string", "Optional expiry datetime (YYYY-MM-DD HH:MM:SS). Omit for permanent memories."),
@@ -59,10 +59,10 @@ var AgentTools = []Tool{
 	},
 	{
 		Name:        "search_memories",
-		Description: "Search past memories by text, category, tag, or project. Returns matches ordered by recency. Use this to recall context before answering questions.",
+		Description: "Search past memories by text, category, tag, or thing. Returns matches ordered by recency. Use this to recall context before answering questions.",
 		Parameters: obj(map[string]any{
 			"query":    prop("string", "Text to search for in memory content"),
-			"category": prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection"),
+			"category": prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection, habit"),
 			"tag":      prop("string", "Filter by tag"),
 			"thing_id": prop("integer", "Filter by thing ID"),
 			"since":    prop("string", "Only memories after this date (YYYY-MM-DD)"),
@@ -73,7 +73,7 @@ var AgentTools = []Tool{
 		Name:        "list_recent_memories",
 		Description: "List the most recent memories, optionally filtered by category. Use at conversation start or check-ins to re-establish context.",
 		Parameters: obj(map[string]any{
-			"category": prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection"),
+			"category": prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection, habit"),
 			"limit":    prop("integer", "Max results (default 10)"),
 		}),
 	},
@@ -83,7 +83,7 @@ var AgentTools = []Tool{
 		Parameters: objReq(map[string]any{
 			"id":         prop("integer", "Memory ID to update"),
 			"content":    prop("string", "New content text"),
-			"category":   prop("string", "New category: observation, decision, blocker, preference, event, reflection"),
+			"category":   prop("string", "New category: observation, decision, blocker, preference, event, reflection, habit"),
 			"tags":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "New tags"},
 			"expires_at": prop("string", "New expiry datetime (YYYY-MM-DD HH:MM:SS), or empty string to make permanent"),
 		}, "id"),
@@ -96,79 +96,24 @@ var AgentTools = []Tool{
 		}, "id"),
 	},
 	{
-		Name:        "get_note",
-		Description: "Retrieve a stored note by key. Use this for persistent memory.",
-		Parameters: objReq(map[string]any{
-			"key": prop("string", "Note key"),
-		}, "key"),
-	},
-	{
-		Name:        "set_note",
-		Description: "Store or update a note by key. Use this as a scratchpad for persistent memory.",
-		Parameters: objReq(map[string]any{
-			"key":   prop("string", "Note key"),
-			"value": prop("string", "Note value"),
-		}, "key", "value"),
-	},
-	{
 		Name:        "get_time",
 		Description: "Get the current system time. Use this when doing things like setting up cron jobs for check-ins and reminders.",
 		Parameters:  obj(nil),
 	},
 	{
-		Name:        "create_skill",
-		Description: "Create a new skill.",
-		Parameters: objReq(map[string]any{
-			"name":        prop("string", "Skill title"),
-			"description": prop("string", "Skill description"),
-			"content":     prop("string", "Skill content"),
-			"tags":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Tags for the skill"},
-		}, "name", "description", "content"),
-	},
-	{
-		Name:        "get_skill",
-		Description: "Retrieve a skill by name.",
-		Parameters: objReq(map[string]any{
-			"name": prop("string", "Skill name"),
-		}, "name"),
-	},
-	{
-		Name:        "list_skills",
-		Description: "List all skills, optionally filtered by tag.",
-		Parameters: obj(map[string]any{
-			"tag": prop("string", "Filter by tag"),
-		}),
-	},
-	{
-		Name:        "update_skill",
-		Description: "Update a skill by name. Can change description, content, or tags.",
-		Parameters: objReq(map[string]any{
-			"name":        prop("string", "Skill name"),
-			"description": prop("string", "New description"),
-			"content":     prop("string", "New content"),
-			"tags":        map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "New tags"},
-		}, "name"),
-	},
-	{
-		Name:        "delete_skill",
-		Description: "Delete a skill by name.",
-		Parameters: objReq(map[string]any{
-			"name": prop("string", "Skill name"),
-		}, "name"),
-	},
-	{
 		Name:        "list_schedules",
-		Description: "List all recurring scheduled tasks.",
+		Description: "List all schedules, including both recurring (cron) and one-shot reminders.",
 		Parameters:  obj(nil),
 	},
 	{
 		Name:        "create_schedule",
-		Description: "Create a recurring scheduled task with a cron expression.",
+		Description: "Create a schedule. For recurring tasks, provide cron_expr. For one-shot reminders, provide fire_at instead. Always call get_time first.",
 		Parameters: objReq(map[string]any{
-			"name":      prop("string", "Unique name slug, e.g. 'weekly-review'"),
-			"cron_expr": prop("string", "Cron expression, e.g. '0 9 * * *' for daily 9am"),
+			"name":      prop("string", "Unique name slug, e.g. 'weekly-review' or 'reminder-call-dentist'"),
+			"cron_expr": prop("string", "Cron expression for recurring schedules, e.g. '0 9 * * *'. Omit for one-shot reminders."),
 			"prompt":    prop("string", "What to tell the agent when this schedule fires"),
-		}, "name", "cron_expr", "prompt"),
+			"fire_at":   prop("string", "Local datetime for one-shot reminders: 'YYYY-MM-DD HH:MM:SS'. Omit for recurring schedules."),
+		}, "name", "prompt"),
 	},
 	{
 		Name:        "update_schedule",
@@ -182,55 +127,10 @@ var AgentTools = []Tool{
 	},
 	{
 		Name:        "delete_schedule",
-		Description: "Delete a recurring schedule by name.",
+		Description: "Delete a schedule by name.",
 		Parameters: objReq(map[string]any{
 			"name": prop("string", "Schedule name to delete"),
 		}, "name"),
-	},
-	{
-		Name:        "create_reminder",
-		Description: "Create a one-shot reminder that fires at a specific local datetime. Always call get_time first to determine the current time.",
-		Parameters: objReq(map[string]any{
-			"prompt":  prop("string", "What to tell the agent when this reminder fires"),
-			"fire_at": prop("string", "Local datetime to fire: 'YYYY-MM-DD HH:MM:SS' (in user's local time, not UTC)"),
-		}, "prompt", "fire_at"),
-	},
-	{
-		Name:        "list_reminders",
-		Description: "List reminders. By default only shows upcoming unfired reminders. Set include_fired to true to include past/fired reminders.",
-		Parameters: obj(map[string]any{
-			"include_fired": prop("boolean", "Include fired/past reminders (default false)"),
-		}),
-	},
-	{
-		Name:        "cancel_reminder",
-		Description: "Cancel a pending reminder by ID.",
-		Parameters: objReq(map[string]any{
-			"id": prop("integer", "Reminder ID to cancel"),
-		}, "id"),
-	},
-	{
-		Name:        "log_habit",
-		Description: "Log a habit instance when the user mentions doing, skipping, or partially completing a recurring activity.",
-		Parameters: objReq(map[string]any{
-			"habit":     prop("string", "Habit name, lowercase and consistent (e.g. 'gym', 'meditation')"),
-			"outcome":   prop("string", "One of: done, skipped, partial"),
-			"notes":     prop("string", "Optional context about this instance"),
-			"logged_at": prop("string", "Date in YYYY-MM-DD format. Defaults to today if omitted."),
-		}, "habit", "outcome"),
-	},
-	{
-		Name:        "get_habit_stats",
-		Description: "Get statistics for a habit: streaks, completion counts, recent entries.",
-		Parameters: objReq(map[string]any{
-			"habit": prop("string", "Habit name to get stats for"),
-			"days":  prop("integer", "Number of days to look back for counts (default 14)"),
-		}, "habit"),
-	},
-	{
-		Name:        "list_habits",
-		Description: "List all tracked habits with recent activity counts.",
-		Parameters:  obj(nil),
 	},
 }
 

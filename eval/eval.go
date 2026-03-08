@@ -24,10 +24,9 @@ type EvalCase struct {
 
 // SeedData populates the in-memory DB before the agent runs.
 type SeedData struct {
-	Things   []SeedThing   `json:"things,omitempty"`
-	Memories []SeedMemory  `json:"memories,omitempty"`
+	Things   []SeedThing       `json:"things,omitempty"`
+	Memories []SeedMemory      `json:"memories,omitempty"`
 	Notes    map[string]string `json:"notes,omitempty"`
-	Skills   []SeedSkill   `json:"skills,omitempty"`
 }
 
 type SeedThing struct {
@@ -45,12 +44,6 @@ type SeedMemory struct {
 	Tags     []string `json:"tags,omitempty"`
 }
 
-type SeedSkill struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Content     string   `json:"content"`
-	Tags        []string `json:"tags,omitempty"`
-}
 
 // Assert defines what to check after the agent responds.
 type Assert struct {
@@ -201,12 +194,6 @@ func seedDB(t *testing.T, database *db.DB, seed SeedData) {
 	for key, value := range seed.Notes {
 		if err := database.SetNote(key, value); err != nil {
 			t.Fatalf("seeding note %q: %v", key, err)
-		}
-	}
-	for _, skill := range seed.Skills {
-		_, err := database.CreateSkill(skill.Name, skill.Description, skill.Content, skill.Tags)
-		if err != nil {
-			t.Fatalf("seeding skill %q: %v", skill.Name, err)
 		}
 	}
 }
