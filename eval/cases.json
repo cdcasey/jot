@@ -6,7 +6,7 @@
 		"seed": {},
 		"assert": {
 			"tool_not_called": ["get_time"],
-			"rubric": "Should answer with the current time from the context provided in the user message without calling any tools."
+			"rubric": "The current time is automatically injected into the user message by the system. The assistant should use that injected time to answer. It should NOT call any tools. Providing a specific time is correct behavior, not hallucination."
 		}
 	},
 	{
