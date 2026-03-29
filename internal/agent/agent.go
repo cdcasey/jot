@@ -26,9 +26,21 @@ func New(database *db.DB, client llm.Client, maxContextTokens int) *Agent {
 
 // Run takes a user message, runs the tool-calling loop, and returns the final text response.
 func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage string) (string, []llm.Message, error) {
+	// Prepend current time to user message so the LLM has temporal context
+	// without embedding it in the system prompt (which would break caching).
+	loc := a.userLocation()
+	now := time.Now().In(loc)
+	zone, _ := now.Zone()
+	timePrefix := fmt.Sprintf("[Current time: %s, %s %s (%s)]\n\n",
+		now.Format("Monday"),
+		now.Format("2006-01-02 15:04"),
+		zone,
+		loc.String(),
+	)
+
 	messages := make([]llm.Message, len(history))
 	copy(messages, history)
-	messages = append(messages, llm.Message{Role: "user", Content: userMessage})
+	messages = append(messages, llm.Message{Role: "user", Content: timePrefix + userMessage})
 
 	// Fixed costs: system prompt + tool definitions.
 	fixedTokens := llm.EstimateTokens(llm.SystemPrompt) + llm.EstimateToolsTokens(llm.AgentTools)
@@ -238,14 +250,6 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		category, _ := getString(params, "category")
 		limit, _ := getInt(params, "limit")
 		result, err = a.db.ListRecentMemories(category, int(limit))
-
-	case "get_time":
-		now := time.Now().In(a.userLocation())
-		formattedLocal := now.Format(time.RFC3339)
-		formattedUTC := now.UTC().Format(time.RFC3339)
-		date := now.Format("2006-01-02")
-		weekday := now.Weekday().String()
-		result = map[string]any{"local": formattedLocal, "utc": formattedUTC, "date": date, "day": weekday}
 
 	case "list_schedules":
 		result, err = a.db.ListSchedules(false)

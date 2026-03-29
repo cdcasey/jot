@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	conversationGap    = 10 * time.Minute
-	summaryContextMax  = 3
-	summarizePrompt    = "Summarize the following conversation concisely. Focus on: what was discussed, any decisions made, action items, and important context the user shared. Keep it under 200 words."
+	conversationGap   = 10 * time.Minute
+	summaryContextMax = 3
+	summarizePrompt   = "Summarize the following conversation concisely. Focus on: what was discussed, any decisions made, action items, and important context the user shared. Keep it under 200 words."
 )
 
 // RunWithConversation loads persistent conversation history, handles gap

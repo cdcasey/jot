@@ -96,18 +96,13 @@ var AgentTools = []Tool{
 		}, "id"),
 	},
 	{
-		Name:        "get_time",
-		Description: "Get the current system time. Use this when doing things like setting up cron jobs for check-ins and reminders.",
-		Parameters:  obj(nil),
-	},
-	{
 		Name:        "list_schedules",
 		Description: "List all schedules, including both recurring (cron) and one-shot reminders.",
 		Parameters:  obj(nil),
 	},
 	{
 		Name:        "create_schedule",
-		Description: "Create a schedule. For recurring tasks, provide cron_expr. For one-shot reminders, provide fire_at instead. Always call get_time first.",
+		Description: "Create a schedule. For recurring tasks, provide cron_expr. For one-shot reminders, provide fire_at instead (local time).",
 		Parameters: objReq(map[string]any{
 			"name":      prop("string", "Unique name slug, e.g. 'weekly-review' or 'reminder-call-dentist'"),
 			"cron_expr": prop("string", "Cron expression for recurring schedules, e.g. '0 9 * * *'. Omit for one-shot reminders."),
