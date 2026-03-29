@@ -348,7 +348,7 @@ func printResults(results []CaseResult, model, judgeModel string) {
 		case "reasoning":
 			reasonCount++
 			reasonSum += float64(r.Score)
-			fmt.Printf(" %d/5   %-30s %q\n", r.Score, r.Name, r.Reason, 60)
+			fmt.Printf(" %d/5   %-30s %q\n", r.Score, r.Name, r.Reason)
 		}
 	}
 
