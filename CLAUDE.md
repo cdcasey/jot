@@ -130,9 +130,9 @@ CREATE TABLE conversation_summaries (
 );
 ```
 
-## LLM Tools (15 total)
+## LLM Tools (14 total)
 
-The agent has exactly these tools - no more, no less:
+The agent has exactly these tools - no more, no less. Current time is injected into the system prompt, not exposed as a tool.
 
 ### Thing Tools (5)
 - `list_things` - List things, optionally filtered by status, priority, tag
@@ -154,8 +154,8 @@ The agent has exactly these tools - no more, no less:
 - `update_schedule` - Update cron_expr, prompt, or enabled flag by name
 - `delete_schedule` - Delete a schedule by name
 
-### Utility Tools (1)
-- `get_time` - Get the current time (respects user's timezone note; falls back to server local)
+### Context (injected, not a tool)
+- Current time and timezone are embedded in the system prompt on each request
 
 ## System Prompt Guidelines
 
@@ -321,6 +321,7 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] Hid notes from LLM (2 tools removed, table kept for internal config)
 - [ ] Prune old conversation summaries (PruneOldSummaries exists, needs cron wiring)
 - [ ] Migrate notes table to .env config
+- [ ] Expose timezone updates to LLM (re-add set_note tool or a dedicated set_timezone tool). Currently userLocation() reads from notes table but LLM has no way to write it.
 
 ## Code Style
 

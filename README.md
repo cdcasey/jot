@@ -56,11 +56,9 @@ The bot responds to DMs and @mentions. Conversation history is maintained per ch
 ## What it can do
 
 - **Things** — track anything with status, priority, tags, and due dates
-- **Notes** — key-value scratchpad for persistent memory
 - **Memories** — contextual memory with full-text search (FTS5), categories, tags, and optional expiry
-- **Skills** — reusable knowledge packages the agent can create and reference
 - **Schedules** — recurring tasks via cron (e.g., daily check-ins, weekly reviews). Agent-manageable.
-- **Reminders** — one-shot notifications ("remind me in 5 minutes"). Timezone-aware.
+- **Reminders** — one-shot notifications via schedules ("remind me at 3pm"). Timezone-aware.
 - **Summaries** — overview of open things, overdue items, recent activity
 
 ## Scheduling

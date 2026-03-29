@@ -102,7 +102,7 @@ var AgentTools = []Tool{
 	},
 	{
 		Name:        "create_schedule",
-		Description: "Create a schedule. For recurring tasks, provide cron_expr. For one-shot reminders, provide fire_at instead. Always call get_time first.",
+		Description: "Create a schedule. For recurring tasks, provide cron_expr. For one-shot reminders, provide fire_at instead (local time).",
 		Parameters: objReq(map[string]any{
 			"name":      prop("string", "Unique name slug, e.g. 'weekly-review' or 'reminder-call-dentist'"),
 			"cron_expr": prop("string", "Cron expression for recurring schedules, e.g. '0 9 * * *'. Omit for one-shot reminders."),
