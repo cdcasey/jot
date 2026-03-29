@@ -44,11 +44,10 @@ type SeedMemory struct {
 	Tags     []string `json:"tags,omitempty"`
 }
 
-
 // Assert defines what to check after the agent responds.
 type Assert struct {
-	ToolCalled       []string `json:"tool_called,omitempty"`        // ALL of these must be called
-	ToolCalledAny    []string `json:"tool_called_any,omitempty"`    // at least ONE of these must be called
+	ToolCalled       []string `json:"tool_called,omitempty"`     // ALL of these must be called
+	ToolCalledAny    []string `json:"tool_called_any,omitempty"` // at least ONE of these must be called
 	ToolNotCalled    []string `json:"tool_not_called,omitempty"`
 	ResponseContains []string `json:"response_contains,omitempty"`
 	Rubric           string   `json:"rubric,omitempty"`
@@ -58,10 +57,10 @@ type Assert struct {
 type CaseResult struct {
 	Name     string
 	Category string
-	Passed   bool    // for tool_reliability (pass/fail)
-	Score    int     // for rubric-scored cases (1-5)
-	Reason   string  // judge reasoning or failure detail
-	Response string  // the agent's full response
+	Passed   bool     // for tool_reliability (pass/fail)
+	Score    int      // for rubric-scored cases (1-5)
+	Reason   string   // judge reasoning or failure detail
+	Response string   // the agent's full response
 	Tools    []string // tools that were called
 }
 
@@ -345,11 +344,11 @@ func printResults(results []CaseResult, model, judgeModel string) {
 		case "context_integration":
 			contextCount++
 			contextSum += float64(r.Score)
-			fmt.Printf(" %d/5   %-30s %q\n", r.Score, r.Name, truncate(r.Reason, 60))
+			fmt.Printf(" %d/5   %-30s %q\n", r.Score, r.Name, r.Reason)
 		case "reasoning":
 			reasonCount++
 			reasonSum += float64(r.Score)
-			fmt.Printf(" %d/5   %-30s %q\n", r.Score, r.Name, truncate(r.Reason, 60))
+			fmt.Printf(" %d/5   %-30s %q\n", r.Score, r.Name, r.Reason, 60)
 		}
 	}
 
