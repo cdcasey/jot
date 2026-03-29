@@ -26,12 +26,14 @@ func New(database *db.DB, client llm.Client, maxContextTokens int) *Agent {
 
 // Run takes a user message, runs the tool-calling loop, and returns the final text response.
 func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage string) (string, []llm.Message, error) {
+	systemPrompt := llm.BuildSystemPrompt(a.userLocation())
+
 	messages := make([]llm.Message, len(history))
 	copy(messages, history)
 	messages = append(messages, llm.Message{Role: "user", Content: userMessage})
 
 	// Fixed costs: system prompt + tool definitions.
-	fixedTokens := llm.EstimateTokens(llm.SystemPrompt) + llm.EstimateToolsTokens(llm.AgentTools)
+	fixedTokens := llm.EstimateTokens(systemPrompt) + llm.EstimateToolsTokens(llm.AgentTools)
 	messageBudget := a.MaxContextTokens - fixedTokens
 	if messageBudget < 1000 {
 		messageBudget = 1000 // floor so we always have room for at least the current turn
@@ -42,7 +44,7 @@ func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage stri
 		if len(trimmed) < len(messages) {
 			log.Printf("context trimmed: %d → %d messages", len(messages), len(trimmed))
 		}
-		resp, err := a.chatWithRetry(ctx, llm.SystemPrompt, trimmed, llm.AgentTools)
+		resp, err := a.chatWithRetry(ctx, systemPrompt, trimmed, llm.AgentTools)
 		if err != nil {
 			return "", nil, fmt.Errorf("llm chat: %w", err)
 		}

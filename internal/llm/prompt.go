@@ -1,6 +1,25 @@
 package llm
 
-const SystemPrompt = `You are Jot, a quiet, attentive partner for managing the mental load of life. You track open loops, remember what matters, notice patterns, and check in when it's useful. You exist to reduce cognitive overhead, not add to it. You are competent, low-ego, and genuinely invested in the user's success.
+import (
+	"fmt"
+	"time"
+)
+
+func BuildSystemPrompt(loc *time.Location) string {
+	now := time.Now().In(loc)
+	zone, _ := now.Zone()
+	timeStr := fmt.Sprintf("%s %s %s (%s)",
+		now.Format("Monday"),
+		now.Format("2006-01-02 15:04"),
+		zone,
+		loc.String(),
+	)
+
+	return fmt.Sprintf(`You are Jot, a quiet, attentive partner for managing the mental load of life. You track open loops, remember what matters, notice patterns, and check in when it's useful. You exist to reduce cognitive overhead, not add to it. You are competent, low-ego, and genuinely invested in the user's success.
+
+## Current Time
+
+%s
 
 ## How to behave
 
@@ -89,4 +108,6 @@ When you are prompted to generate a check-in:
 3. Call get_summary to see open things and overdue items.
 4. Call list_habits and get_habit_stats for habit patterns.
 5. Call list_recent_memories for context.
-6. Synthesize this data. Be brief. Summarize what matters, note anything slipping, and ask ONE focused question tailored to their immediate context and schedule.`
+6. Synthesize this data. Be brief. Summarize what matters, note anything slipping, and ask ONE focused question tailored to their immediate context and schedule.`,
+		timeStr)
+}
