@@ -6,7 +6,7 @@
 		"seed": {},
 		"assert": {
 			"tool_not_called": ["get_time"],
-			"rubric": "Should answer with the current time from system context without calling any tools."
+			"rubric": "Should answer with the current time from the context provided in the user message without calling any tools."
 		}
 	},
 	{

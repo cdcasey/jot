@@ -3,32 +3,18 @@ package llm
 import (
 	"strings"
 	"testing"
-	"time"
 )
 
-func TestBuildSystemPromptContainsTime(t *testing.T) {
-	loc, _ := time.LoadLocation("America/New_York")
-	prompt := BuildSystemPrompt(loc)
-
-	now := time.Now().In(loc)
-	weekday := now.Format("Monday")
-
-	if !strings.Contains(prompt, weekday) {
-		t.Errorf("expected prompt to contain weekday %q", weekday)
-	}
-	if !strings.Contains(prompt, "America/New_York") {
-		t.Error("expected prompt to contain IANA zone name")
-	}
-	if strings.Contains(prompt, "get_time") {
-		t.Error("prompt should not reference get_time")
+func TestSystemPromptNoGetTime(t *testing.T) {
+	if strings.Contains(SystemPrompt, "get_time") {
+		t.Error("system prompt should not reference get_time")
 	}
 }
 
-func TestBuildSystemPromptFallbackUTC(t *testing.T) {
-	prompt := BuildSystemPrompt(time.UTC)
-
-	if !strings.Contains(prompt, "UTC") {
-		t.Error("expected prompt to contain UTC when given UTC location")
+func TestSystemPromptIsStatic(t *testing.T) {
+	// SystemPrompt should be a constant — no time or dynamic content.
+	if strings.Contains(SystemPrompt, "2026") {
+		t.Error("system prompt should not contain a year — time belongs in the user message")
 	}
 }
 

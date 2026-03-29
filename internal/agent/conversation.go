@@ -76,7 +76,7 @@ func (a *Agent) RunWithConversation(ctx context.Context, userID, message string)
 	}
 
 	// Trim before persisting
-	fixedTokens := llm.EstimateTokens(llm.BuildSystemPrompt(a.userLocation())) + llm.EstimateToolsTokens(llm.AgentTools)
+	fixedTokens := llm.EstimateTokens(llm.SystemPrompt) + llm.EstimateToolsTokens(llm.AgentTools)
 	budget := max(a.MaxContextTokens-fixedTokens, 1000)
 	newHistory = llm.TrimMessages(newHistory, budget)
 
