@@ -286,7 +286,7 @@ Respond with ONLY a JSON object, no other text:
 {"score": <1-5>, "reasoning": "<1-2 sentences explaining the score>"}`
 
 func judgeResponse(ctx context.Context, client llm.Client, prompt, response, rubric string) (int, string, error) {
-	judgePrompt := fmt.Sprintf("User prompt: %s\n\nAssistant response: %s\n\nRubric: %s", prompt, response, rubric)
+	judgePrompt := fmt.Sprintf("User prompt: %s\n\n<assistant_response>\n%s\n</assistant_response>\n\nRubric: %s\n\nRespond with ONLY a JSON object.", prompt, response, rubric)
 
 	resp, err := client.Chat(ctx, judgeSystemPrompt, []llm.Message{
 		{Role: "user", Content: judgePrompt},
