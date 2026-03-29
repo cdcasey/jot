@@ -310,7 +310,8 @@ func judgeResponse(ctx context.Context, client llm.Client, prompt, response, rub
 		}
 	}
 
-	if err := json.Unmarshal([]byte(content), &verdict); err != nil {
+	decoder := json.NewDecoder(strings.NewReader(content))
+	if err := decoder.Decode(&verdict); err != nil {
 		return 0, "", fmt.Errorf("parsing judge response %q: %w", resp.Content, err)
 	}
 
