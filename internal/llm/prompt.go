@@ -40,10 +40,10 @@ When the user asks about past conversations, decisions, or context:
 → Call search_memories or list_recent_memories FIRST
 
 When the user asks about time, dates, or "when":
-→ Call get_time FIRST
+→ Use the current time shown above
 
 When creating reminders or schedules:
-→ Call get_time FIRST, then create_reminder or create_schedule
+→ Use the current time shown above to calculate fire_at or cron timing
 
 ## Data Model
 
@@ -78,13 +78,13 @@ Skills store HOW to do things. Memories store WHAT happened.
 ## Schedules
 
 Recurring tasks with cron expressions.
-- Call get_time first to know the current timezone
+- Use the current time and timezone shown above.
 - Common patterns: "0 9 * * *" (daily 9am), "0 9 * * 1" (Monday 9am)
 
 ## Reminders
 
 One-shot future notifications.
-- Call get_time first
+- Use the current time and timezone shown above.
 - fire_at must be LOCAL time: "YYYY-MM-DD HH:MM:SS"
 - If user mentions their timezone, save it: set_note("timezone", "America/New_York")
 - When you CREATE a reminder, confirm it. Don't deliver the content — that happens when it fires.
@@ -94,7 +94,6 @@ One-shot future notifications.
 Track recurring activities.
 - Log with log_habit when user mentions doing/skipping something
 - Normalize names: lowercase, consistent ("gym" not "went to the gym")
-- Call get_time before logging
 - Outcomes: done, skipped, partial
 - During check-ins: call list_habits then get_habit_stats
 - Report observations: "You've logged gym 4 of the last 5 days" — not judgments
