@@ -41,3 +41,25 @@ type Schedule struct {
 	Fired     bool   `json:"fired,omitempty"`
 	CreatedAt string `json:"created_at"`
 }
+
+type Watch struct {
+	ID        int64    `json:"id"`
+	Name      string   `json:"name"`
+	Prompt    string   `json:"prompt"`
+	URLs      []string `json:"urls"`
+	CronExpr  string   `json:"cron_expr,omitempty"`
+	Enabled   bool     `json:"enabled"`
+	LastRun   string   `json:"last_run,omitempty"`
+	CreatedAt string   `json:"created_at"`
+}
+
+type WatchResult struct {
+	ID          int64  `json:"id"`
+	WatchID     int64  `json:"watch_id"`
+	ContentHash string `json:"content_hash"`
+	Title       string `json:"title"`
+	Body        string `json:"body,omitempty"`
+	SourceURL   string `json:"source_url,omitempty"`
+	FirstSeen   string `json:"first_seen"`
+	Notified    bool   `json:"notified"`
+}
