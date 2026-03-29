@@ -96,11 +96,6 @@ var AgentTools = []Tool{
 		}, "id"),
 	},
 	{
-		Name:        "get_time",
-		Description: "Get the current system time. Use this when doing things like setting up cron jobs for check-ins and reminders.",
-		Parameters:  obj(nil),
-	},
-	{
 		Name:        "list_schedules",
 		Description: "List all schedules, including both recurring (cron) and one-shot reminders.",
 		Parameters:  obj(nil),

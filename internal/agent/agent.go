@@ -241,14 +241,6 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		limit, _ := getInt(params, "limit")
 		result, err = a.db.ListRecentMemories(category, int(limit))
 
-	case "get_time":
-		now := time.Now().In(a.userLocation())
-		formattedLocal := now.Format(time.RFC3339)
-		formattedUTC := now.UTC().Format(time.RFC3339)
-		date := now.Format("2006-01-02")
-		weekday := now.Weekday().String()
-		result = map[string]any{"local": formattedLocal, "utc": formattedUTC, "date": date, "day": weekday}
-
 	case "list_schedules":
 		result, err = a.db.ListSchedules(false)
 
