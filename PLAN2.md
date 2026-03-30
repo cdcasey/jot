@@ -421,12 +421,59 @@ Files added/modified:
 
 ---
 
+## Phase 6: Web Watches ✓ COMPLETE
+
+URL monitoring with LLM-powered extraction. Watches fetch web pages on a schedule, extract structured items via a dedicated LLM call, deduplicate against stored results, and notify via Discord DM/webhook.
+
+### Architecture
+
+```
+Scheduler cron / run_watch tool
+    → watch.Runner.RunWatch(ctx, watch)
+        → Fetch(ctx, urls)           # HTTP GET, HTML→text, 2MB cap, 30s timeout
+        → LLM extraction             # Separate system prompt, JSON array output
+        → Dedup via SHA-256(title + source_url)
+        → Store new results in watch_results
+    → Scheduler formats + delivers via DM/webhook
+    → Mark results notified
+```
+
+### Key Design Decisions
+
+- **Two-phase LLM pipeline**: main agent loop for tool orchestration, separate extraction LLM call with constrained JSON-only system prompt and no tools.
+- **Dedup on title + source_url**: hash includes source URL so same-named items from different sites don't collide. Extraction system prompt tells the LLM to produce unique titles (e.g., "Hamlet - Austin Playhouse" not just "Hamlet").
+- **Context propagation**: `context.Context` flows through `Fetch` → `fetchOne` → `http.NewRequestWithContext` for proper cancellation.
+- **Age-based pruning**: `PruneOldWatchResults(180)` runs daily via scheduler's `pruneOldData()` tick.
+- **`UpdateWatch` uses shared `updateRow`**: `watches` registered in `allowedColumns`, gets `updated_at` auto-stamp and not-found checks for free.
+
+### Files
+
+- `internal/watch/fetch.go` — URL fetching + HTML-to-text (golang.org/x/net/html tokenizer)
+- `internal/watch/runner.go` — Extraction orchestration, JSON parsing, dedup, storage
+- `internal/db/queries_watches.go` — CRUD for watches + watch_results, pruning
+- `internal/db/schema.sql` — watches + watch_results tables
+- `internal/agent/agent.go` — 6 tool cases (list/create/update/delete/run/list_results)
+- `internal/llm/tools.go` — 6 tool definitions
+- `internal/llm/prompt.go` — Watches section in system prompt
+- `internal/scheduler/scheduler.go` — loadWatches, runWatch, pruneOldData, formatWatchResults
+- `eval/eval.go` — SeedWatch + SeedWatchResult support
+- `eval/cases.json` — 2 eval cases (tool_create_watch, tool_list_watch_results)
+
+### Tests
+
+- `internal/db/queries_watched_test.go` — 12 tests (CRUD, dedup, cascade, enabled filter, prune)
+- `internal/watch/fetch_test.go` — 8 tests (HTML parsing, script stripping, errors, block structure)
+- `internal/watch/runner_test.go` — 9 tests (new items, dedup, error cases, markdown fences, hash)
+
+---
+
 ## Implementation Order Summary
 
 1. **Phase 1** (Skills + Time) — ✓ COMPLETE
 2. **Phase 2** (Memory) — ✓ COMPLETE (FTS5, Memory Mgmt, Conversation Summaries)
 3. **Phase 3** (Schedules + Reminders) — ✓ COMPLETE
-4. **Phase 4** (Polish) — 4.2 PruneOldSummaries needs cron wiring, 4.3/4.4 not started, 4.6 Reminder DM Delivery not started, 4.7 not started
-5. **Phase 5** (Habit Tracking) — ✓ COMPLETE
+4. **Phase 4** (Polish) — 4.2 PruneOldSummaries needs wiring into pruneOldData(), 4.3/4.4 done, 4.6 Reminder DM Delivery done, 4.7 done
+5. **Phase 5** (Habit Tracking) — ✓ COMPLETE (later simplified: habits removed, use memories with category='habit')
+6. **Phase 6** (Web Watches) — ✓ COMPLETE
 
 Each phase should end with `go test ./...` passing and a manual test via CLI.
