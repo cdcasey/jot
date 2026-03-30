@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -22,7 +23,7 @@ func TestFetchBasicHTML(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	results := Fetch([]string{srv.URL})
+	results := Fetch(context.Background(), []string{srv.URL})
 	if len(results) != 1 {
 		t.Fatalf("expected 1 result, got %d", len(results))
 	}
@@ -56,7 +57,7 @@ func TestFetchStripsScriptAndStyle(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	results := Fetch([]string{srv.URL})
+	results := Fetch(context.Background(), []string{srv.URL})
 	r := results[0]
 	if r.Err != nil {
 		t.Fatalf("unexpected error: %v", r.Err)
@@ -81,7 +82,7 @@ func TestFetchHTTPError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	results := Fetch([]string{srv.URL})
+	results := Fetch(context.Background(), []string{srv.URL})
 	r := results[0]
 	if r.Err == nil {
 		t.Error("expected error for 404 response")
@@ -102,7 +103,7 @@ func TestFetchMultipleURLs(t *testing.T) {
 	}))
 	defer srv2.Close()
 
-	results := Fetch([]string{srv1.URL, srv2.URL})
+	results := Fetch(context.Background(), []string{srv1.URL, srv2.URL})
 	if len(results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(results))
 	}
@@ -115,7 +116,7 @@ func TestFetchMultipleURLs(t *testing.T) {
 }
 
 func TestFetchBadURL(t *testing.T) {
-	results := Fetch([]string{"http://localhost:1/nonexistent"})
+	results := Fetch(context.Background(), []string{"http://localhost:1/nonexistent"})
 	r := results[0]
 	if r.Err == nil {
 		t.Error("expected error for unreachable URL")
@@ -128,7 +129,7 @@ func TestFetchPreservesBlockStructure(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	results := Fetch([]string{srv.URL})
+	results := Fetch(context.Background(), []string{srv.URL})
 	r := results[0]
 	if r.Err != nil {
 		t.Fatalf("unexpected error: %v", r.Err)

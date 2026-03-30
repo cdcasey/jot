@@ -51,6 +51,7 @@ type Watch struct {
 	Enabled   bool     `json:"enabled"`
 	LastRun   string   `json:"last_run,omitempty"`
 	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
 }
 
 type WatchResult struct {

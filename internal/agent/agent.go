@@ -427,6 +427,31 @@ func (a *Agent) executeTool(ctx context.Context, name string, params map[string]
 			}
 		}
 
+	case "list_watch_results":
+		name, _ := getString(params, "name")
+		w, e := a.db.GetWatchByName(name)
+		if e != nil {
+			err = e
+			break
+		}
+		if w == nil {
+			result = map[string]any{"error": "watch not found: " + name}
+			break
+		}
+		unnotifiedOnly := false
+		if v, ok := params["unnotified_only"]; ok {
+			if b, ok := v.(bool); ok {
+				unnotifiedOnly = b
+			}
+		}
+		limit := 0
+		if v, ok := params["limit"]; ok {
+			if f, ok := v.(float64); ok {
+				limit = int(f)
+			}
+		}
+		result, err = a.db.ListWatchResults(w.ID, unnotifiedOnly, limit)
+
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}
 	}

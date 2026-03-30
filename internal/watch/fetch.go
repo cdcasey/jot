@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,20 +21,20 @@ type FetchResult struct {
 // Fetch retrieves each URL and strips the HTML down to readable text.
 // It processes URLs sequentially to be polite to small servers.
 // Returns one FetchResult per URL; callers should check each .Err individually.
-func Fetch(urls []string) []FetchResult {
+func Fetch(ctx context.Context, urls []string) []FetchResult {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
 
 	results := make([]FetchResult, len(urls))
 	for i, u := range urls {
-		results[i] = fetchOne(client, u)
+		results[i] = fetchOne(ctx, client, u)
 	}
 	return results
 }
 
-func fetchOne(client *http.Client, url string) FetchResult {
-	req, err := http.NewRequest("GET", url, nil)
+func fetchOne(ctx context.Context, client *http.Client, url string) FetchResult {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return FetchResult{URL: url, Err: fmt.Errorf("building request: %w", err)}
 	}

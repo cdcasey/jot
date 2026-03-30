@@ -86,7 +86,8 @@ CREATE TABLE IF NOT EXISTS watches (
     cron_expr TEXT NOT NULL DEFAULT '',
     enabled INTEGER DEFAULT 1,
     last_run TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS watch_results (

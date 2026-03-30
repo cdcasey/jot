@@ -49,7 +49,7 @@ func (r *Runner) RunWatch(ctx context.Context, w db.Watch) ([]db.WatchResult, er
 	}
 
 	// 1. Fetch all URLs.
-	fetched := Fetch(w.URLs)
+	fetched := Fetch(ctx, w.URLs)
 
 	// Build the content block for the LLM. Include all successful fetches,
 	// log failures but don't abort — partial results are still useful.
@@ -134,7 +134,11 @@ func parseExtractedItems(raw string) ([]extractedItem, error) {
 
 	var items []extractedItem
 	if err := json.Unmarshal([]byte(cleaned), &items); err != nil {
-		return nil, fmt.Errorf("invalid JSON from LLM: %w\nraw response: %s", err, truncate(raw, 500))
+		preview := cleaned
+		if len(preview) > 500 {
+			preview = preview[:500] + "..."
+		}
+		return nil, fmt.Errorf("invalid JSON from LLM: %w\nraw response: %s", err, preview)
 	}
 	return items, nil
 }
@@ -146,9 +150,3 @@ func contentHash(title string) string {
 	return fmt.Sprintf("%x", h)
 }
 
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return s[:n] + "..."
-}

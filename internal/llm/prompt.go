@@ -70,5 +70,6 @@ Web watches monitor URLs on a schedule and extract specific information using th
 - Use create_watch when the user wants periodic monitoring of web pages (e.g., "check for new theatre auditions every Monday").
 - Each watch has a prompt (extraction instructions), a list of URLs, and an optional cron expression.
 - run_watch triggers a watch immediately — use this to test a watch or get results on demand.
+- list_watch_results shows previously found items for a watch. Use this to answer questions about past results.
 - Watches without a cron_expr are manual-only (run_watch only).
 - The extraction prompt should be specific about what to look for and what details to return.`

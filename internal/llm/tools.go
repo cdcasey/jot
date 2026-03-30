@@ -167,6 +167,15 @@ var AgentTools = []Tool{
 			"name": prop("string", "Watch name to run"),
 		}, "name"),
 	},
+	{
+		Name:        "list_watch_results",
+		Description: "List stored results for a watch. Returns previously extracted items, optionally only unnotified ones.",
+		Parameters: objReq(map[string]any{
+			"name":            prop("string", "Watch name to list results for"),
+			"unnotified_only": prop("boolean", "If true, only return results that haven't been delivered yet"),
+			"limit":           prop("integer", "Max results to return (default 50)"),
+		}, "name"),
+	},
 }
 
 // Helper functions for building JSON Schema objects.

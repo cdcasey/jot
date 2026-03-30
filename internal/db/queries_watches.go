@@ -26,7 +26,7 @@ func (d *DB) CreateWatch(name, prompt string, urls []string, cronExpr string) (i
 
 // ListWatches returns all watches, optionally only enabled ones.
 func (d *DB) ListWatches(enabledOnly bool) ([]Watch, error) {
-	q := `SELECT id, name, prompt, urls, cron_expr, enabled, COALESCE(last_run,''), created_at FROM watches`
+	q := `SELECT id, name, prompt, urls, cron_expr, enabled, COALESCE(last_run,''), created_at, COALESCE(updated_at,'') FROM watches`
 	if enabledOnly {
 		q += " WHERE enabled = 1"
 	}
@@ -36,7 +36,7 @@ func (d *DB) ListWatches(enabledOnly bool) ([]Watch, error) {
 
 // GetWatchByName returns a watch by name, or nil if not found.
 func (d *DB) GetWatchByName(name string) (*Watch, error) {
-	q := `SELECT id, name, prompt, urls, cron_expr, enabled, COALESCE(last_run,''), created_at
+	q := `SELECT id, name, prompt, urls, cron_expr, enabled, COALESCE(last_run,''), created_at, COALESCE(updated_at,'')
 		FROM watches WHERE name = ?`
 	rows, err := d.conn.Query(q, name)
 	if err != nil {
@@ -55,26 +55,7 @@ func (d *DB) GetWatchByName(name string) (*Watch, error) {
 
 // UpdateWatch updates fields on a watch by ID.
 func (d *DB) UpdateWatch(id int64, fields map[string]any) error {
-	allowed := map[string]bool{"prompt": true, "urls": true, "cron_expr": true, "enabled": true}
-	if len(fields) == 0 {
-		return nil
-	}
-	var setClauses []string
-	var args []any
-	for col, val := range fields {
-		if !allowed[col] {
-			return fmt.Errorf("disallowed column %q for watches", col)
-		}
-		setClauses = append(setClauses, col+" = ?")
-		args = append(args, val)
-	}
-	args = append(args, id)
-	query := fmt.Sprintf("UPDATE watches SET %s WHERE id = ?", strings.Join(setClauses, ", "))
-	_, err := d.conn.Exec(query, args...)
-	if err != nil {
-		return fmt.Errorf("updating watch %d: %w", id, err)
-	}
-	return nil
+	return d.updateRow("watches", id, fields)
 }
 
 // DeleteWatch deletes a watch by name. Cascades to watch_results.
@@ -185,7 +166,7 @@ func (d *DB) scanWatchRows(rows *sql.Rows) ([]Watch, error) {
 		var w Watch
 		var urlsRaw string
 		var enabled int
-		if err := rows.Scan(&w.ID, &w.Name, &w.Prompt, &urlsRaw, &w.CronExpr, &enabled, &w.LastRun, &w.CreatedAt); err != nil {
+		if err := rows.Scan(&w.ID, &w.Name, &w.Prompt, &urlsRaw, &w.CronExpr, &enabled, &w.LastRun, &w.CreatedAt, &w.UpdatedAt); err != nil {
 			return nil, fmt.Errorf("scanning watch: %w", err)
 		}
 		w.Enabled = enabled == 1
