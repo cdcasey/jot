@@ -269,5 +269,49 @@
 			"tool_called_any": ["list_things", "get_summary"],
 			"rubric": "Should notice the pattern in the data (many open/dropped projects, nothing done). Should push back or ask probing questions rather than giving generic advice like 'try breaking tasks into smaller pieces.' Should engage with WHY this might be happening — novelty bias, fear of finishing, unclear goals, etc."
 		}
+	},
+	{
+		"name": "tool_create_watch",
+		"category": "context_integration",
+		"prompt": "Watch https://austintheatre.org/auditions for auditions and let me know about anything new once a week",
+		"seed": {},
+		"assert": {
+			"tool_called": ["create_watch"],
+			"tool_not_called": ["create_thing", "create_schedule"],
+			"rubric": "Should call create_watch with a reasonable name, the given URL, and a weekly cron expression. The extraction prompt should be specific — mentioning what details to extract from audition listings (e.g., show name, dates, company, requirements), not just 'extract auditions'. Should NOT create a separate schedule or thing."
+		}
+	},
+	{
+		"name": "tool_list_watch_results",
+		"category": "tool_reliability",
+		"prompt": "What has my auditions watch found so far?",
+		"seed": {
+			"watches": [
+				{
+					"name": "auditions",
+					"prompt": "Extract audition listings with show name, company, dates, and requirements",
+					"urls": ["https://austintheatre.org/auditions"],
+					"cron_expr": "0 9 * * 1"
+				}
+			],
+			"watch_results": [
+				{
+					"watch_name": "auditions",
+					"title": "Hamlet - Austin Playhouse",
+					"body": "Open auditions March 15, callbacks March 17. Seeking male-presenting actors 25-45.",
+					"source_url": "https://austintheatre.org/auditions"
+				},
+				{
+					"watch_name": "auditions",
+					"title": "Macbeth - City Theatre",
+					"body": "By appointment only. April 1-3. All roles open.",
+					"source_url": "https://austintheatre.org/auditions"
+				}
+			]
+		},
+		"assert": {
+			"tool_called": ["list_watch_results"],
+			"tool_not_called": ["run_watch"]
+		}
 	}
 ]
