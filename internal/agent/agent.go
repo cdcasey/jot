@@ -10,6 +10,7 @@ import (
 
 	"github.com/chris/jot/internal/db"
 	"github.com/chris/jot/internal/llm"
+	"github.com/chris/jot/internal/watch"
 )
 
 const maxToolRounds = 10
@@ -17,11 +18,17 @@ const maxToolRounds = 10
 type Agent struct {
 	db               *db.DB
 	client           llm.Client
+	watchRunner      *watch.Runner
 	MaxContextTokens int
 }
 
 func New(database *db.DB, client llm.Client, maxContextTokens int) *Agent {
 	return &Agent{db: database, client: client, MaxContextTokens: maxContextTokens}
+}
+
+// SetWatchRunner sets the watch runner for manual watch execution via tools.
+func (a *Agent) SetWatchRunner(wr *watch.Runner) {
+	a.watchRunner = wr
 }
 
 // Run takes a user message, runs the tool-calling loop, and returns the final text response.
@@ -74,7 +81,7 @@ func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage stri
 
 		// Execute each tool call and append results
 		for _, tc := range resp.ToolCalls {
-			result := a.executeTool(tc.Name, tc.Params)
+			result := a.executeTool(ctx, tc.Name, tc.Params)
 			log.Printf("tool %s → %s", tc.Name, truncate(result, 200))
 			messages = append(messages, llm.Message{
 				Role:       "user",
@@ -109,7 +116,7 @@ func (a *Agent) chatWithRetry(ctx context.Context, systemPrompt string, messages
 	}
 }
 
-func (a *Agent) executeTool(name string, params map[string]any) string {
+func (a *Agent) executeTool(ctx context.Context, name string, params map[string]any) string {
 	var result any
 	var err error
 
@@ -319,6 +326,131 @@ func (a *Agent) executeTool(name string, params map[string]any) string {
 		if err == nil {
 			result = map[string]any{"status": "deleted"}
 		}
+
+	case "list_watches":
+		result, err = a.db.ListWatches(false)
+
+	case "create_watch":
+		name, _ := getString(params, "name")
+		prompt, _ := getString(params, "prompt")
+		cronExpr, _ := getString(params, "cron_expr")
+		var urls []string
+		if v, ok := params["urls"]; ok {
+			if arr, ok := v.([]any); ok {
+				for _, u := range arr {
+					if s, ok := u.(string); ok {
+						urls = append(urls, s)
+					}
+				}
+			}
+		}
+		id, e := a.db.CreateWatch(name, prompt, urls, cronExpr)
+		if e != nil {
+			err = e
+		} else {
+			result = map[string]any{"id": id, "status": "created"}
+		}
+
+	case "update_watch":
+		name, _ := getString(params, "name")
+		w, e := a.db.GetWatchByName(name)
+		if e != nil {
+			err = e
+			break
+		}
+		if w == nil {
+			result = map[string]any{"error": "watch not found: " + name}
+			break
+		}
+		fields := make(map[string]any)
+		if v, ok := getString(params, "prompt"); ok {
+			fields["prompt"] = v
+		}
+		if v, ok := getString(params, "cron_expr"); ok {
+			fields["cron_expr"] = v
+		}
+		if v, ok := params["urls"]; ok {
+			if arr, ok := v.([]any); ok {
+				var urls []string
+				for _, u := range arr {
+					if s, ok := u.(string); ok {
+						urls = append(urls, s)
+					}
+				}
+				b, _ := json.Marshal(urls)
+				fields["urls"] = string(b)
+			}
+		}
+		if v, ok := params["enabled"]; ok {
+			if b, ok := v.(bool); ok {
+				if b {
+					fields["enabled"] = 1
+				} else {
+					fields["enabled"] = 0
+				}
+			}
+		}
+		err = a.db.UpdateWatch(w.ID, fields)
+		if err == nil {
+			result = map[string]any{"status": "updated"}
+		}
+
+	case "delete_watch":
+		name, _ := getString(params, "name")
+		err = a.db.DeleteWatch(name)
+		if err == nil {
+			result = map[string]any{"status": "deleted"}
+		}
+
+	case "run_watch":
+		name, _ := getString(params, "name")
+		if a.watchRunner == nil {
+			result = map[string]any{"error": "watch runner not configured"}
+			break
+		}
+		w, e := a.db.GetWatchByName(name)
+		if e != nil {
+			err = e
+			break
+		}
+		if w == nil {
+			result = map[string]any{"error": "watch not found: " + name}
+			break
+		}
+		newResults, e := a.watchRunner.RunWatch(ctx, *w)
+		if e != nil {
+			err = e
+		} else {
+			result = map[string]any{
+				"new_items": len(newResults),
+				"results":   newResults,
+			}
+		}
+
+	case "list_watch_results":
+		name, _ := getString(params, "name")
+		w, e := a.db.GetWatchByName(name)
+		if e != nil {
+			err = e
+			break
+		}
+		if w == nil {
+			result = map[string]any{"error": "watch not found: " + name}
+			break
+		}
+		unnotifiedOnly := false
+		if v, ok := params["unnotified_only"]; ok {
+			if b, ok := v.(bool); ok {
+				unnotifiedOnly = b
+			}
+		}
+		limit := 0
+		if v, ok := params["limit"]; ok {
+			if f, ok := v.(float64); ok {
+				limit = int(f)
+			}
+		}
+		result, err = a.db.ListWatchResults(w.ID, unnotifiedOnly, limit)
 
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}

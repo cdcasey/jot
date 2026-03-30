@@ -7,32 +7,38 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/chris/jot/internal/agent"
 	"github.com/chris/jot/internal/db"
+	"github.com/chris/jot/internal/watch"
 	"github.com/robfig/cron/v3"
 )
 
 type Scheduler struct {
-	cron       *cron.Cron
-	webhookURL string
-	db         *db.DB
-	agent      *agent.Agent
-	dmSend     func(userID, content string) error
-	mu         sync.Mutex
-	entryIDs   map[int64]cron.EntryID // scheduleID -> cron entry
+	cron          *cron.Cron
+	webhookURL    string
+	db            *db.DB
+	agent         *agent.Agent
+	watchRunner   *watch.Runner
+	dmSend        func(userID, content string) error
+	mu            sync.Mutex
+	entryIDs      map[int64]cron.EntryID // scheduleID -> cron entry
+	watchEntryIDs map[int64]cron.EntryID // watchID -> cron entry
 }
 
-func New(database *db.DB, ag *agent.Agent, webhookURL string, dmSend func(userID, content string) error) *Scheduler {
+func New(database *db.DB, ag *agent.Agent, webhookURL string, dmSend func(userID, content string) error, wr *watch.Runner) *Scheduler {
 	return &Scheduler{
-		cron:       cron.New(),
-		webhookURL: webhookURL,
-		db:         database,
-		agent:      ag,
-		dmSend:     dmSend,
-		entryIDs:   make(map[int64]cron.EntryID),
+		cron:          cron.New(),
+		webhookURL:    webhookURL,
+		db:            database,
+		agent:         ag,
+		watchRunner:   wr,
+		dmSend:        dmSend,
+		entryIDs:      make(map[int64]cron.EntryID),
+		watchEntryIDs: make(map[int64]cron.EntryID),
 	}
 }
 
@@ -49,12 +55,18 @@ func (s *Scheduler) Start() {
 		}
 	}()
 
-	// Poll for due reminders every 60 seconds
+	// Poll for due reminders every 60 seconds; prune old data daily.
 	go func() {
 		t := time.NewTicker(60 * time.Second)
 		defer t.Stop()
+		lastPrune := time.Time{}
 		for range t.C {
 			s.fireReminders()
+
+			if time.Since(lastPrune) > 24*time.Hour {
+				s.pruneOldData()
+				lastPrune = time.Now()
+			}
 		}
 	}()
 
@@ -119,6 +131,9 @@ func (s *Scheduler) loadSchedules() {
 	}
 
 	log.Printf("scheduler: loaded %d schedule(s)", len(s.entryIDs))
+
+	// Load watches into cron (only if runner is configured).
+	s.loadWatches()
 }
 
 func (s *Scheduler) runSchedule(sched db.Schedule) {
@@ -170,6 +185,94 @@ func (s *Scheduler) fireReminders() {
 		s.deliver(fmt.Sprintf("reminder[%d]", r.ID), reply)
 		log.Printf("scheduler: fired one-shot %d", r.ID)
 	}
+}
+
+func (s *Scheduler) pruneOldData() {
+	if n, err := s.db.PruneOldWatchResults(180); err != nil {
+		log.Printf("scheduler: pruning watch results: %v", err)
+	} else if n > 0 {
+		log.Printf("scheduler: pruned %d old watch result(s)", n)
+	}
+}
+
+// loadWatches registers enabled watches with cron expressions into the cron scheduler.
+// Must be called with s.mu held.
+func (s *Scheduler) loadWatches() {
+	if s.watchRunner == nil {
+		return
+	}
+
+	for _, entryID := range s.watchEntryIDs {
+		s.cron.Remove(entryID)
+	}
+	s.watchEntryIDs = make(map[int64]cron.EntryID)
+
+	watches, err := s.db.ListWatches(true)
+	if err != nil {
+		log.Printf("scheduler: loading watches: %v", err)
+		return
+	}
+
+	for _, w := range watches {
+		if w.CronExpr == "" {
+			continue // manual-only watch
+		}
+		entryID, err := s.cron.AddFunc(w.CronExpr, func() {
+			s.runWatch(w)
+		})
+		if err != nil {
+			log.Printf("scheduler: invalid cron %q for watch %q: %v", w.CronExpr, w.Name, err)
+			continue
+		}
+		s.watchEntryIDs[w.ID] = entryID
+	}
+
+	if len(s.watchEntryIDs) > 0 {
+		log.Printf("scheduler: loaded %d watch(es)", len(s.watchEntryIDs))
+	}
+}
+
+func (s *Scheduler) runWatch(w db.Watch) {
+	newResults, err := s.watchRunner.RunWatch(context.Background(), w)
+	if err != nil {
+		log.Printf("watch[%s]: error: %v", w.Name, err)
+		return
+	}
+
+	if len(newResults) == 0 {
+		log.Printf("watch[%s]: no new items", w.Name)
+		return
+	}
+
+	msg := formatWatchResults(w.Name, newResults)
+	s.deliver(fmt.Sprintf("watch[%s]", w.Name), msg)
+
+	// Mark delivered results as notified.
+	ids := make([]int64, len(newResults))
+	for i, r := range newResults {
+		ids[i] = r.ID
+	}
+	if err := s.db.MarkResultsNotified(ids); err != nil {
+		log.Printf("watch[%s]: marking notified: %v", w.Name, err)
+	}
+
+	log.Printf("watch[%s]: delivered %d new item(s)", w.Name, len(newResults))
+}
+
+func formatWatchResults(watchName string, results []db.WatchResult) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "**Watch: %s** — %d new item(s):\n\n", watchName, len(results))
+	for _, r := range results {
+		fmt.Fprintf(&b, "• **%s**\n", r.Title)
+		if r.Body != "" {
+			fmt.Fprintf(&b, "  %s\n", r.Body)
+		}
+		if r.SourceURL != "" {
+			fmt.Fprintf(&b, "  %s\n", r.SourceURL)
+		}
+		b.WriteByte('\n')
+	}
+	return strings.TrimSpace(b.String())
 }
 
 func (s *Scheduler) deliver(label, content string) {

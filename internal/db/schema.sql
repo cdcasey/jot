@@ -77,3 +77,27 @@ CREATE TABLE IF NOT EXISTS conversation_summaries (
     message_count INTEGER,
     created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS watches (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    prompt TEXT NOT NULL,
+    urls TEXT NOT NULL DEFAULT '[]',
+    cron_expr TEXT NOT NULL DEFAULT '',
+    enabled INTEGER DEFAULT 1,
+    last_run TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS watch_results (
+    id INTEGER PRIMARY KEY,
+    watch_id INTEGER NOT NULL REFERENCES watches(id) ON DELETE CASCADE,
+    content_hash TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT,
+    source_url TEXT,
+    first_seen TEXT DEFAULT (datetime('now')),
+    notified INTEGER DEFAULT 0,
+    UNIQUE(watch_id, content_hash)
+);

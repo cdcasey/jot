@@ -59,6 +59,7 @@ The bot responds to DMs and @mentions. Conversation history is maintained per ch
 - **Memories** — contextual memory with full-text search (FTS5), categories, tags, and optional expiry
 - **Schedules** — recurring tasks via cron (e.g., daily check-ins, weekly reviews). Agent-manageable.
 - **Reminders** — one-shot notifications via schedules ("remind me at 3pm"). Timezone-aware.
+- **Watches** — monitor web pages on a schedule, extract structured info via LLM, notify on new items
 - **Summaries** — overview of open things, overdue items, recent activity
 
 ## Scheduling
@@ -66,6 +67,17 @@ The bot responds to DMs and @mentions. Conversation history is maintained per ch
 Schedules and reminders are stored in SQLite and managed by the agent through conversation. The scheduler delivers via Discord DM (preferred) or webhook fallback.
 
 Set `DISCORD_WEBHOOK_URL` in `.env` for webhook delivery. `CHECK_IN_CRON` seeds a default morning check-in if the schedules table is empty.
+
+## Watches
+
+Web watches monitor URLs on a schedule, extract structured information using the LLM, and notify you when new items appear.
+
+```
+jot> watch https://austintheatre.org/auditions for new auditions every Monday
+jot> what has my auditions watch found?
+```
+
+Each watch has an extraction prompt (what to look for), a list of URLs, and an optional cron expression. Watches without a cron are manual-only — trigger them with "run my watch." Results are deduplicated across runs so you only get notified about new items. Old results are pruned after 6 months.
 
 ## Testing
 
@@ -103,4 +115,6 @@ Everything lives in `data.db` (SQLite). Inspect it directly:
 sqlite3 data.db ".tables"
 sqlite3 data.db "SELECT * FROM things"
 sqlite3 data.db "SELECT name, cron_expr, prompt FROM schedules"
+sqlite3 data.db "SELECT name, cron_expr, enabled FROM watches"
+sqlite3 data.db "SELECT title, body, first_seen FROM watch_results ORDER BY first_seen DESC LIMIT 10"
 ```

@@ -24,9 +24,11 @@ type EvalCase struct {
 
 // SeedData populates the in-memory DB before the agent runs.
 type SeedData struct {
-	Things   []SeedThing       `json:"things,omitempty"`
-	Memories []SeedMemory      `json:"memories,omitempty"`
-	Notes    map[string]string `json:"notes,omitempty"`
+	Things       []SeedThing       `json:"things,omitempty"`
+	Memories     []SeedMemory      `json:"memories,omitempty"`
+	Notes        map[string]string `json:"notes,omitempty"`
+	Watches      []SeedWatch       `json:"watches,omitempty"`
+	WatchResults []SeedWatchResult `json:"watch_results,omitempty"`
 }
 
 type SeedThing struct {
@@ -42,6 +44,20 @@ type SeedMemory struct {
 	Content  string   `json:"content"`
 	Category string   `json:"category"`
 	Tags     []string `json:"tags,omitempty"`
+}
+
+type SeedWatch struct {
+	Name     string   `json:"name"`
+	Prompt   string   `json:"prompt"`
+	URLs     []string `json:"urls"`
+	CronExpr string   `json:"cron_expr,omitempty"`
+}
+
+type SeedWatchResult struct {
+	WatchName string `json:"watch_name"`
+	Title     string `json:"title"`
+	Body      string `json:"body,omitempty"`
+	SourceURL string `json:"source_url,omitempty"`
 }
 
 // Assert defines what to check after the agent responds.
@@ -193,6 +209,20 @@ func seedDB(t *testing.T, database *db.DB, seed SeedData) {
 	for key, value := range seed.Notes {
 		if err := database.SetNote(key, value); err != nil {
 			t.Fatalf("seeding note %q: %v", key, err)
+		}
+	}
+	for _, w := range seed.Watches {
+		if _, err := database.CreateWatch(w.Name, w.Prompt, w.URLs, w.CronExpr); err != nil {
+			t.Fatalf("seeding watch %q: %v", w.Name, err)
+		}
+	}
+	for _, wr := range seed.WatchResults {
+		w, err := database.GetWatchByName(wr.WatchName)
+		if err != nil || w == nil {
+			t.Fatalf("seeding watch result: watch %q not found", wr.WatchName)
+		}
+		if _, err := database.SaveWatchResult(w.ID, fmt.Sprintf("%x", len(wr.Title)), wr.Title, wr.Body, wr.SourceURL); err != nil {
+			t.Fatalf("seeding watch result %q: %v", wr.Title, err)
 		}
 	}
 }

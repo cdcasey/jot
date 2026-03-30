@@ -64,6 +64,13 @@ func (d *DB) migrate() error {
 		}
 	}
 
+	// Add updated_at to watches if missing (added after initial watch schema).
+	if d.tableExists("watches") && !d.columnExists("watches", "updated_at") {
+		if _, err := d.conn.Exec(`ALTER TABLE watches ADD COLUMN updated_at TEXT DEFAULT (datetime('now'))`); err != nil {
+			return fmt.Errorf("adding updated_at to watches: %w", err)
+		}
+	}
+
 	// Drop removed tables.
 	for _, table := range []string{"check_ins", "skills", "reminders", "habit_logs"} {
 		if _, err := d.conn.Exec("DROP TABLE IF EXISTS " + table); err != nil {

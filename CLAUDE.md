@@ -16,6 +16,9 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
                    |
                    v
               Scheduler (check-ins via Discord webhook)
+                   |
+                   v
+              Watch Runner (fetches URLs → LLM extraction → dedup → notify)
 ```
 
 ### Tech Stack
@@ -40,6 +43,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     queries_memories.go      # Memories queries
     queries_schedule.go      # Schedules + one-shot reminders queries
     queries_conversations.go # Conversation persistence + summaries
+    queries_watches.go       # Watch + watch result queries
 /internal/llm/
     client.go                # LLMClient interface
     provider.go              # Provider factory (NewClient)
@@ -54,7 +58,10 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     bot.go                   # Discord bot setup
     handlers.go              # Message handlers
 /internal/scheduler/
-    scheduler.go             # Cron for check-ins
+    scheduler.go             # Cron for check-ins, watch scheduling, data pruning
+/internal/watch/
+    fetch.go                 # URL fetching + HTML-to-text extraction
+    runner.go                # Watch execution: fetch → LLM extract → dedup → store
 /config/
     config.go                # Environment/config loading
 /eval/
@@ -128,9 +135,33 @@ CREATE TABLE conversation_summaries (
     message_count INTEGER,
     created_at TEXT DEFAULT (datetime('now'))
 );
+
+CREATE TABLE watches (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    prompt TEXT NOT NULL,              -- extraction instructions for the LLM
+    urls TEXT NOT NULL DEFAULT '[]',   -- JSON array of URLs to fetch
+    cron_expr TEXT NOT NULL DEFAULT '',-- cron schedule or empty for manual-only
+    enabled INTEGER DEFAULT 1,
+    last_run TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE watch_results (
+    id INTEGER PRIMARY KEY,
+    watch_id INTEGER NOT NULL REFERENCES watches(id) ON DELETE CASCADE,
+    content_hash TEXT NOT NULL,        -- SHA-256 of normalized title+source_url for dedup
+    title TEXT NOT NULL,
+    body TEXT,
+    source_url TEXT,
+    first_seen TEXT DEFAULT (datetime('now')),
+    notified INTEGER DEFAULT 0,       -- 0=new, 1=delivered
+    UNIQUE(watch_id, content_hash)
+);
 ```
 
-## LLM Tools (14 total)
+## LLM Tools (20 total)
 
 The agent has exactly these tools - no more, no less. Current time is injected into the system prompt, not exposed as a tool.
 
@@ -153,6 +184,14 @@ The agent has exactly these tools - no more, no less. Current time is injected i
 - `create_schedule` - Create a recurring schedule (cron_expr) or one-shot reminder (fire_at)
 - `update_schedule` - Update cron_expr, prompt, or enabled flag by name
 - `delete_schedule` - Delete a schedule by name
+
+### Watch Tools (6)
+- `list_watches` - List all web watches
+- `create_watch` - Create a watch (name, extraction prompt, URLs, optional cron_expr)
+- `update_watch` - Update prompt, URLs, cron_expr, or enabled flag by name
+- `delete_watch` - Delete a watch by name (cascades to results)
+- `run_watch` - Manually trigger a watch to fetch URLs and extract items now
+- `list_watch_results` - List stored results for a watch (optionally unnotified only)
 
 ### Context (injected, not a tool)
 - Current time and timezone are embedded in the system prompt on each request
@@ -319,9 +358,20 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] Removed check_ins (dead table)
 - [x] Merged reminders into schedules (3 tools removed)
 - [x] Hid notes from LLM (2 tools removed, table kept for internal config)
-- [ ] Prune old conversation summaries (PruneOldSummaries exists, needs cron wiring)
+- [ ] Prune old conversation summaries (PruneOldSummaries exists, needs wiring into pruneOldData())
 - [ ] Migrate notes table to .env config
 - [ ] Expose timezone updates to LLM (re-add set_note tool or a dedicated set_timezone tool). Currently userLocation() reads from notes table but LLM has no way to write it.
+
+### Phase 6: Web Watches
+- [x] URL fetching with HTML-to-text extraction (internal/watch/fetch.go)
+- [x] LLM-powered item extraction with JSON schema (internal/watch/runner.go)
+- [x] Deduplication via SHA-256 hash of title + source_url
+- [x] watches + watch_results tables with cascade delete
+- [x] 6 LLM tools: list/create/update/delete watches, run_watch, list_watch_results
+- [x] Scheduler integration: cron-based watch runs with Discord DM/webhook delivery
+- [x] Age-based pruning of watch results (180 days, runs daily via scheduler)
+- [x] Context propagation (context.Context through fetch pipeline)
+- [x] Eval cases for watch creation and result querying
 
 ## Code Style
 
@@ -336,6 +386,7 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - The agent has NO filesystem access beyond SQLite
 - The agent has NO shell/exec capabilities
 - The agent can ONLY call the defined tools
+- Watches make outbound HTTP GET requests to user-specified URLs (read-only, 2MB cap, 30s timeout)
 - Discord bot should only respond to DMs from authorized user(s)
 - Store secrets in environment variables, never in code
 

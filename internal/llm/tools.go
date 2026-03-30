@@ -127,6 +127,55 @@ var AgentTools = []Tool{
 			"name": prop("string", "Schedule name to delete"),
 		}, "name"),
 	},
+	{
+		Name:        "list_watches",
+		Description: "List all web watches (URL monitors that extract info on a schedule).",
+		Parameters:  obj(nil),
+	},
+	{
+		Name:        "create_watch",
+		Description: "Create a web watch that periodically fetches URLs and extracts information. The prompt tells the LLM what to extract from the page content.",
+		Parameters: objReq(map[string]any{
+			"name":      prop("string", "Unique name slug, e.g. 'austin-theatre-auditions'"),
+			"prompt":    prop("string", "Extraction instructions, e.g. 'Extract theatre auditions with show name, company, dates, and requirements'"),
+			"urls":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "URLs to fetch and extract from"},
+			"cron_expr": prop("string", "Cron expression for how often to run, e.g. '0 9 * * 1' for Monday 9am. Omit for manual-only."),
+		}, "name", "prompt", "urls"),
+	},
+	{
+		Name:        "update_watch",
+		Description: "Update a watch by name. Can change prompt, urls, cron_expr, or enabled.",
+		Parameters: objReq(map[string]any{
+			"name":      prop("string", "Watch name to update"),
+			"prompt":    prop("string", "New extraction prompt"),
+			"urls":      map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "New list of URLs"},
+			"cron_expr": prop("string", "New cron expression"),
+			"enabled":   prop("boolean", "true to enable, false to disable"),
+		}, "name"),
+	},
+	{
+		Name:        "delete_watch",
+		Description: "Delete a watch by name. Also removes all stored results for that watch.",
+		Parameters: objReq(map[string]any{
+			"name": prop("string", "Watch name to delete"),
+		}, "name"),
+	},
+	{
+		Name:        "run_watch",
+		Description: "Manually trigger a watch to run now. Fetches URLs, extracts new items, and returns what was found. Use this to test a watch or get results on demand.",
+		Parameters: objReq(map[string]any{
+			"name": prop("string", "Watch name to run"),
+		}, "name"),
+	},
+	{
+		Name:        "list_watch_results",
+		Description: "List stored results for a watch. Returns previously extracted items, optionally only unnotified ones.",
+		Parameters: objReq(map[string]any{
+			"name":            prop("string", "Watch name to list results for"),
+			"unnotified_only": prop("boolean", "If true, only return results that haven't been delivered yet"),
+			"limit":           prop("integer", "Max results to return (default 50)"),
+		}, "name"),
+	},
 }
 
 // Helper functions for building JSON Schema objects.
