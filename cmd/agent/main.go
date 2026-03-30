@@ -46,9 +46,12 @@ func main() {
 
 	ag := agent.New(database, client, cfg.MaxContextTokens)
 
+	wr := watch.NewRunner(database, client)
+	ag.SetWatchRunner(wr)
+
 	// If Discord token is set, run as bot
 	if cfg.DiscordToken != "" {
-		runBot(cfg, database, ag, client)
+		runBot(cfg, database, ag, wr)
 		return
 	}
 
@@ -94,7 +97,7 @@ func runCLI(ag *agent.Agent) {
 	}
 }
 
-func runBot(cfg *config.Config, database *db.DB, ag *agent.Agent, client llm.Client) {
+func runBot(cfg *config.Config, database *db.DB, ag *agent.Agent, wr *watch.Runner) {
 	bot, err := discord.NewBot(cfg.DiscordToken, ag, database)
 	if err != nil {
 		log.Fatalf("failed to start Discord bot: %v", err)
@@ -107,7 +110,6 @@ func runBot(cfg *config.Config, database *db.DB, ag *agent.Agent, client llm.Cli
 		}
 	}
 
-	wr := watch.NewRunner(database, client)
 	sched := scheduler.New(database, ag, cfg.DiscordWebhook, bot.SendDM, wr)
 	sched.SeedDefaultSchedule(cfg.CheckInCron)
 	sched.Start()
