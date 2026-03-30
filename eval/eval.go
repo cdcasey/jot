@@ -175,7 +175,8 @@ func runCase(t *testing.T, ec EvalCase, agentClient, judgeClient llm.Client) Cas
 
 	// LLM-as-judge scoring.
 	if ec.Assert.Rubric != "" {
-		score, reason, err := judgeResponse(ctx, judgeClient, ec.Prompt, response, ec.Assert.Rubric)
+		toolContext := formatToolContext(history)
+		score, reason, err := judgeResponse(ctx, judgeClient, ec.Prompt, response, ec.Assert.Rubric, toolContext)
 		if err != nil {
 			t.Errorf("judge error: %v", err)
 			result.Score = 0
@@ -315,8 +316,27 @@ Scoring guide:
 Respond with ONLY a JSON object, no other text:
 {"score": <1-5>, "reasoning": "<1-2 sentences explaining the score>"}`
 
-func judgeResponse(ctx context.Context, client llm.Client, prompt, response, rubric string) (int, string, error) {
-	judgePrompt := fmt.Sprintf("User prompt: %s\n\n<assistant_response>\n%s\n</assistant_response>\n\nRubric: %s\n\nRespond with ONLY a JSON object.", prompt, response, rubric)
+func formatToolContext(history []llm.Message) string {
+	var parts []string
+	for _, msg := range history {
+		if len(msg.ToolCalls) > 0 {
+			for _, tc := range msg.ToolCalls {
+				parts = append(parts, fmt.Sprintf("Called: %s(%v)", tc.Name, tc.Params))
+			}
+		}
+		if msg.Role == "tool" && msg.Content != "" {
+			parts = append(parts, fmt.Sprintf("Result: %s", truncate(msg.Content, 500)))
+		}
+	}
+	return strings.Join(parts, "\n")
+}
+
+func judgeResponse(ctx context.Context, client llm.Client, prompt, response, rubric, toolContext string) (int, string, error) {
+	toolSection := ""
+	if toolContext != "" {
+		toolSection = fmt.Sprintf("\n\n<tool_interactions>\n%s\n</tool_interactions>\n\nThe assistant had access to tools and the above shows what it called and what was returned. Details the assistant mentions that match tool results are NOT hallucinated.", toolContext)
+	}
+	judgePrompt := fmt.Sprintf("User prompt: %s%s\n\n<assistant_response>\n%s\n</assistant_response>\n\nRubric: %s\n\nRespond with ONLY a JSON object.", prompt, toolSection, response, rubric)
 
 	resp, err := client.Chat(ctx, judgeSystemPrompt, []llm.Message{
 		{Role: "user", Content: judgePrompt},
