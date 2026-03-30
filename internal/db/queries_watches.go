@@ -149,6 +149,18 @@ func (d *DB) MarkResultsNotified(ids []int64) error {
 	return nil
 }
 
+// PruneOldWatchResults deletes watch results older than the given number of days.
+func (d *DB) PruneOldWatchResults(olderThanDays int) (int64, error) {
+	res, err := d.conn.Exec(
+		"DELETE FROM watch_results WHERE first_seen < datetime('now', ?)",
+		fmt.Sprintf("-%d days", olderThanDays),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("pruning old watch results: %w", err)
+	}
+	return res.RowsAffected()
+}
+
 // --- internal helpers ---
 
 func (d *DB) scanWatches(query string, args ...any) ([]Watch, error) {

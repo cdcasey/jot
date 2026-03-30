@@ -55,12 +55,18 @@ func (s *Scheduler) Start() {
 		}
 	}()
 
-	// Poll for due reminders every 60 seconds
+	// Poll for due reminders every 60 seconds; prune old data daily.
 	go func() {
 		t := time.NewTicker(60 * time.Second)
 		defer t.Stop()
+		lastPrune := time.Time{}
 		for range t.C {
 			s.fireReminders()
+
+			if time.Since(lastPrune) > 24*time.Hour {
+				s.pruneOldData()
+				lastPrune = time.Now()
+			}
 		}
 	}()
 
@@ -178,6 +184,14 @@ func (s *Scheduler) fireReminders() {
 		}
 		s.deliver(fmt.Sprintf("reminder[%d]", r.ID), reply)
 		log.Printf("scheduler: fired one-shot %d", r.ID)
+	}
+}
+
+func (s *Scheduler) pruneOldData() {
+	if n, err := s.db.PruneOldWatchResults(180); err != nil {
+		log.Printf("scheduler: pruning watch results: %v", err)
+	} else if n > 0 {
+		log.Printf("scheduler: pruned %d old watch result(s)", n)
 	}
 }
 

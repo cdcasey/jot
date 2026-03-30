@@ -95,7 +95,7 @@ func (r *Runner) RunWatch(ctx context.Context, w db.Watch) ([]db.WatchResult, er
 	// 3. Dedup and store.
 	var newResults []db.WatchResult
 	for _, item := range items {
-		hash := contentHash(item.Title)
+		hash := contentHash(item.Title, item.SourceURL)
 		id, err := r.db.SaveWatchResult(w.ID, hash, item.Title, item.Body, item.SourceURL)
 		if err != nil {
 			log.Printf("watch[%s]: saving result %q: %v", w.Name, item.Title, err)
@@ -143,9 +143,9 @@ func parseExtractedItems(raw string) ([]extractedItem, error) {
 	return items, nil
 }
 
-// contentHash returns a SHA-256 hex digest of the normalized title.
-func contentHash(title string) string {
-	normalized := strings.ToLower(strings.TrimSpace(title))
+// contentHash returns a SHA-256 hex digest of the normalized title + source URL.
+func contentHash(title, sourceURL string) string {
+	normalized := strings.ToLower(strings.TrimSpace(title)) + "\n" + strings.TrimSpace(sourceURL)
 	h := sha256.Sum256([]byte(normalized))
 	return fmt.Sprintf("%x", h)
 }

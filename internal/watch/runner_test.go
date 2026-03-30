@@ -203,17 +203,30 @@ func TestRunWatchMarkdownFences(t *testing.T) {
 }
 
 func TestContentHash(t *testing.T) {
-	// Same title with different casing/spacing should produce same hash
-	h1 := contentHash("Hamlet Auditions")
-	h2 := contentHash("  hamlet auditions  ")
+	// Same title+url with different casing/spacing should produce same hash
+	h1 := contentHash("Hamlet Auditions", "https://example.com")
+	h2 := contentHash("  hamlet auditions  ", "https://example.com")
 	if h1 != h2 {
 		t.Errorf("expected same hash for normalized titles, got %s vs %s", h1, h2)
 	}
 
 	// Different titles should produce different hashes
-	h3 := contentHash("Macbeth Auditions")
+	h3 := contentHash("Macbeth Auditions", "https://example.com")
 	if h1 == h3 {
 		t.Error("expected different hashes for different titles")
+	}
+
+	// Same title, different source URL should produce different hashes
+	h4 := contentHash("Hamlet Auditions", "https://other.com")
+	if h1 == h4 {
+		t.Error("expected different hashes for different source URLs")
+	}
+
+	// Empty source URL should still work
+	h5 := contentHash("Hamlet Auditions", "")
+	h6 := contentHash("Hamlet Auditions", "")
+	if h5 != h6 {
+		t.Error("expected same hash for same title with empty URLs")
 	}
 }
 
