@@ -72,4 +72,5 @@ Web watches monitor URLs on a schedule and extract specific information using th
 - run_watch triggers a watch immediately — use this to test a watch or get results on demand.
 - list_watch_results shows previously found items for a watch. Use this to answer questions about past results.
 - Watches without a cron_expr are manual-only (run_watch only).
-- The extraction prompt should be specific about what to look for and what details to return.`
+- The extraction prompt should be specific about what to look for and what details to return.
+- Titles are used for deduplication — tell the extraction prompt to include distinguishing context (e.g., "Show Name - Company Name" not just "Show Name").`

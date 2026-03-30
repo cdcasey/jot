@@ -15,7 +15,7 @@ import (
 const extractionSystemPrompt = `You are an extraction assistant. You will receive text content scraped from one or more web pages, along with instructions on what to extract.
 
 Return ONLY a JSON array of objects. Each object must have these fields:
-- "title": short identifying name for the item (required)
+- "title": unique identifying name for the item (required). Include enough context to distinguish similar items (e.g., "Hamlet - Austin Playhouse" not just "Hamlet"). Titles are used for deduplication across runs.
 - "body": relevant details, summary, or description (optional, empty string if none)
 - "source_url": the URL this item came from, if identifiable (optional, empty string if unknown)
 
