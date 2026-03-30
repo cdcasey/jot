@@ -252,3 +252,36 @@ func TestListWatchesEnabledOnly(t *testing.T) {
 		t.Errorf("expected enabled watch name %q, got %q", "enabled-one", enabled[0].Name)
 	}
 }
+
+func TestPruneOldWatchResults(t *testing.T) {
+	d := openTestDB(t)
+
+	watchID, _ := d.CreateWatch("prune-test", "prompt", nil, "")
+
+	// Insert a result, then backdate it to 200 days ago.
+	d.SaveWatchResult(watchID, "old-hash", "Old Result", "", "")
+	d.conn.Exec(
+		"UPDATE watch_results SET first_seen = datetime('now', '-200 days') WHERE content_hash = 'old-hash'",
+	)
+
+	// Insert a recent result.
+	d.SaveWatchResult(watchID, "new-hash", "New Result", "", "")
+
+	// Prune at 180 days — should remove the old one.
+	n, err := d.PruneOldWatchResults(180)
+	if err != nil {
+		t.Fatalf("PruneOldWatchResults: %v", err)
+	}
+	if n != 1 {
+		t.Errorf("expected 1 pruned, got %d", n)
+	}
+
+	// Only the new result should remain.
+	results, _ := d.ListWatchResults(watchID, false, 10)
+	if len(results) != 1 {
+		t.Fatalf("expected 1 remaining result, got %d", len(results))
+	}
+	if results[0].Title != "New Result" {
+		t.Errorf("expected New Result to survive, got %q", results[0].Title)
+	}
+}
