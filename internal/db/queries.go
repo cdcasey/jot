@@ -8,6 +8,7 @@ type Thing struct {
 	Priority    string   `json:"priority"`
 	Tags        []string `json:"tags,omitempty"`
 	DueDate     string   `json:"due_date,omitempty"`
+	Overdue     bool     `json:"overdue,omitempty"`
 	CreatedAt   string   `json:"created_at"`
 	UpdatedAt   string   `json:"updated_at"`
 	CompletedAt string   `json:"completed_at,omitempty"`
@@ -22,12 +23,6 @@ type Memory struct {
 	Source    string   `json:"source"`
 	ExpiresAt string   `json:"expires_at,omitempty"`
 	CreatedAt string   `json:"created_at"`
-}
-
-type Summary struct {
-	OpenThings    int     `json:"open_things"`
-	OverdueThings []Thing `json:"overdue_things,omitempty"`
-	RecentThings  []Thing `json:"recent_things,omitempty"`
 }
 
 type Schedule struct {

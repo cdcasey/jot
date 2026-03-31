@@ -181,9 +181,6 @@ func (a *Agent) executeTool(ctx context.Context, name string, params map[string]
 			result = map[string]any{"status": "completed"}
 		}
 
-	case "get_summary":
-		result, err = a.db.GetSummary()
-
 	case "save_memory":
 		content, _ := getString(params, "content")
 		category, _ := getString(params, "category")

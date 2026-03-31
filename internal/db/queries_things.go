@@ -7,6 +7,7 @@ import (
 )
 
 // ListThings returns things, optionally filtered by status, priority, or tag.
+// Each thing with a due_date in the past (and not done/dropped) is marked Overdue.
 func (d *DB) ListThings(status, priority, tag string) ([]Thing, error) {
 	query := `SELECT id, title, COALESCE(notes,''), status, priority,
 		COALESCE(tags,'[]'), COALESCE(due_date,''), created_at, updated_at,
@@ -66,42 +67,6 @@ func (d *DB) CompleteThing(id int64) error {
 	return nil
 }
 
-// GetSummary returns a high-level summary of current state.
-func (d *DB) GetSummary() (*Summary, error) {
-	s := &Summary{}
-
-	if err := d.conn.QueryRow("SELECT COUNT(*) FROM things WHERE status IN ('open','active')").Scan(&s.OpenThings); err != nil {
-		return nil, fmt.Errorf("counting open things: %w", err)
-	}
-
-	// Overdue things
-	now := time.Now().UTC().Format("2006-01-02")
-	overdue, err := d.scanThings(
-		`SELECT id, title, COALESCE(notes,''), status, priority,
-			COALESCE(tags,'[]'), COALESCE(due_date,''), created_at, updated_at,
-			COALESCE(completed_at,'') FROM things
-			WHERE due_date < ? AND due_date != '' AND status NOT IN ('done','dropped')
-			ORDER BY due_date`, now,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("querying overdue: %w", err)
-	}
-	s.OverdueThings = overdue
-
-	// Recent things (last 5 created)
-	recent, err := d.scanThings(
-		`SELECT id, title, COALESCE(notes,''), status, priority,
-			COALESCE(tags,'[]'), COALESCE(due_date,''), created_at, updated_at,
-			COALESCE(completed_at,'') FROM things
-			ORDER BY created_at DESC LIMIT 5`,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("querying recent: %w", err)
-	}
-	s.RecentThings = recent
-
-	return s, nil
-}
 
 func (d *DB) scanThings(query string, args ...any) ([]Thing, error) {
 	rows, err := d.conn.Query(query, args...)
@@ -109,6 +74,7 @@ func (d *DB) scanThings(query string, args ...any) ([]Thing, error) {
 		return nil, fmt.Errorf("querying things: %w", err)
 	}
 	defer rows.Close()
+	now := time.Now().UTC().Format("2006-01-02")
 	var things []Thing
 	for rows.Next() {
 		var t Thing
@@ -117,6 +83,9 @@ func (d *DB) scanThings(query string, args ...any) ([]Thing, error) {
 			return nil, fmt.Errorf("scanning thing: %w", err)
 		}
 		_ = json.Unmarshal([]byte(tagsJSON), &t.Tags)
+		if t.DueDate != "" && t.DueDate < now && t.Status != "done" && t.Status != "dropped" {
+			t.Overdue = true
+		}
 		things = append(things, t)
 	}
 	return things, rows.Err()

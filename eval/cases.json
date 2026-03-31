@@ -68,7 +68,7 @@
 			]
 		},
 		"assert": {
-			"tool_called_any": ["list_things", "get_summary"]
+			"tool_called": ["list_things"]
 		}
 	},
 	{
@@ -124,7 +124,7 @@
 			]
 		},
 		"assert": {
-			"tool_called_any": ["list_things", "get_summary"],
+			"tool_called": ["list_things"],
 			"rubric": "Should identify that coding (4 items) and health (4-5 items) are the dominant themes. Should synthesize clusters, not just list all 12 items verbatim. A good response groups items and notes relative weight."
 		}
 	},
@@ -183,7 +183,7 @@
 			]
 		},
 		"assert": {
-			"tool_called_any": ["list_things", "get_summary"],
+			"tool_called": ["list_things"],
 			"rubric": "Should prioritize the urgent/due-today items (Ship v2.0, Respond to client email) over low-priority items. Should reason about urgency vs importance, not just sort by date or list everything equally. Should suggest a realistic focus for the day."
 		}
 	},
@@ -266,7 +266,7 @@
 			]
 		},
 		"assert": {
-			"tool_called_any": ["list_things", "get_summary"],
+			"tool_called": ["list_things"],
 			"rubric": "Should notice the pattern in the data (many open/dropped projects, nothing done). Should push back or ask probing questions rather than giving generic advice like 'try breaking tasks into smaller pieces.' Should engage with WHY this might be happening — novelty bias, fear of finishing, unclear goals, etc."
 		}
 	},

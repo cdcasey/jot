@@ -3,7 +3,7 @@ package llm
 var AgentTools = []Tool{
 	{
 		Name:        "list_things",
-		Description: "List things, optionally filtered by status, priority, or tag.",
+		Description: "List things, optionally filtered by status, priority, or tag. Items past their due date are marked overdue.",
 		Parameters: obj(map[string]any{
 			"status":   prop("string", "Filter by status: open, active, done, dropped"),
 			"priority": prop("string", "Filter by priority: low, normal, high, urgent"),
@@ -40,11 +40,6 @@ var AgentTools = []Tool{
 		Parameters: objReq(map[string]any{
 			"id": prop("integer", "Thing ID to complete"),
 		}, "id"),
-	},
-	{
-		Name:        "get_summary",
-		Description: "Get a summary of open things, overdue items, and recent activity.",
-		Parameters:  obj(nil),
 	},
 	{
 		Name:        "save_memory",
