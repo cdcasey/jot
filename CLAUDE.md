@@ -166,7 +166,7 @@ CREATE TABLE watch_results (
 The agent has exactly these tools - no more, no less. Current time is injected into the system prompt, not exposed as a tool.
 
 ### Thing Tools (4)
-- `list_things` - List things, optionally filtered by status, priority, tag. Also returns overdue items.
+- `list_things` - List things, optionally filtered by status, priority, tag. Items past due date are marked `overdue: true`.
 - `create_thing` - Create a new thing (title required; notes, priority, due_date, tags optional)
 - `update_thing` - Update a thing by id (any field except id and created_at)
 - `complete_thing` - Mark a thing as done
