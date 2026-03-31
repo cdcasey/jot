@@ -196,28 +196,40 @@ func TestGetSetNote(t *testing.T) {
 	}
 }
 
-// --- Summary ---
+// --- Overdue ---
 
-func TestGetSummary(t *testing.T) {
+func TestListThingsOverdue(t *testing.T) {
 	d := openTestDB(t)
 
 	d.CreateThing("open task", "", "", "", nil)
 	d.CreateThing("overdue task", "", "", "2020-01-01", nil)
-	id3, _ := d.CreateThing("done task", "", "", "", nil)
+	id3, _ := d.CreateThing("done task", "", "", "2020-01-01", nil)
 	d.CompleteThing(id3)
 
-	s, err := d.GetSummary()
+	things, err := d.ListThings("", "", "")
 	if err != nil {
-		t.Fatalf("GetSummary: %v", err)
+		t.Fatalf("ListThings: %v", err)
 	}
-	if s.OpenThings != 2 {
-		t.Errorf("expected 2 open things, got %d", s.OpenThings)
+
+	overdueCount := 0
+	for _, th := range things {
+		if th.Overdue {
+			overdueCount++
+			if th.Title != "overdue task" {
+				t.Errorf("unexpected overdue thing: %q", th.Title)
+			}
+		}
 	}
-	if len(s.OverdueThings) != 1 {
-		t.Errorf("expected 1 overdue thing, got %d", len(s.OverdueThings))
+	if overdueCount != 1 {
+		t.Errorf("expected 1 overdue thing, got %d", overdueCount)
 	}
-	if len(s.RecentThings) != 3 {
-		t.Errorf("expected 3 recent things, got %d", len(s.RecentThings))
+
+	// Done things should not be marked overdue even with a past due_date.
+	doneThings, _ := d.ListThings("done", "", "")
+	for _, th := range doneThings {
+		if th.Overdue {
+			t.Errorf("done thing %q should not be overdue", th.Title)
+		}
 	}
 }
 
