@@ -17,7 +17,7 @@ func envFloat64(key string) *float64 {
 }
 
 type Config struct {
-	LLMProvider      string // anthropic, openai, ollama
+	LLMProvider      string // anthropic, openai, gemini, ollama
 	AnthropicKey     string // API key (X-Api-Key header)
 	AnthropicToken   string // OAuth token (Authorization: Bearer header)
 	OpenAIKey        string

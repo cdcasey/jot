@@ -1,6 +1,6 @@
 # Jot
 
-A personal assistant for tracking open loops — anything on your mind. Uses Claude/GPT/Ollama for natural language understanding, stores everything in SQLite. Runs as a CLI REPL or Discord bot.
+A personal assistant for tracking open loops — anything on your mind. Uses Claude/GPT/Gemini/Ollama for natural language understanding, stores everything in SQLite. Runs as a CLI REPL or Discord bot.
 
 ## Setup
 
@@ -15,9 +15,12 @@ cp .env .env.local  # or just edit .env directly
 ```
 
 Set `LLM_PROVIDER` to one of:
-- `anthropic` — requires `ANTHROPIC_API_KEY`
+- `anthropic` — requires `ANTHROPIC_API_KEY` (default)
 - `openai` — requires `OPENAI_API_KEY`
+- `gemini` — requires `GEMINI_API_KEY` (defaults to gemini-2.5-flash)
 - `ollama` — no key needed, runs locally
+
+Optionally set `LLM_TEMPERATURE` to control randomness (omit for provider default).
 
 ## Usage
 
@@ -35,6 +38,12 @@ jot> exit
 
 ```bash
 echo "list my open things" | ./jot
+```
+
+### Gemini
+
+```bash
+LLM_PROVIDER=gemini GEMINI_API_KEY=your-key ./jot
 ```
 
 ### Ollama (local)
