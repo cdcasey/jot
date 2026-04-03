@@ -12,32 +12,35 @@ import (
 const anthropicAPI = "https://api.anthropic.com/v1/messages"
 
 type AnthropicClient struct {
-	apiKey    string
-	authToken string
-	model     string
-	http      *http.Client
+	apiKey      string
+	authToken   string
+	model       string
+	temperature *float64
+	http        *http.Client
 }
 
-func NewAnthropicClient(apiKey, authToken, model string) *AnthropicClient {
+func NewAnthropicClient(apiKey, authToken, model string, temperature *float64) *AnthropicClient {
 	if model == "" {
 		model = "claude-sonnet-4-20250514"
 	}
 	return &AnthropicClient{
-		apiKey:    apiKey,
-		authToken: authToken,
-		model:     model,
-		http:      &http.Client{},
+		apiKey:      apiKey,
+		authToken:   authToken,
+		model:       model,
+		temperature: temperature,
+		http:        &http.Client{},
 	}
 }
 
 // Raw API request/response types
 
 type anthRequest struct {
-	Model     string        `json:"model"`
-	MaxTokens int           `json:"max_tokens"`
-	System    []anthText    `json:"system,omitempty"`
-	Messages  []anthMessage `json:"messages"`
-	Tools     []anthTool    `json:"tools,omitempty"`
+	Model       string        `json:"model"`
+	MaxTokens   int           `json:"max_tokens"`
+	Temperature *float64      `json:"temperature,omitempty"`
+	System      []anthText    `json:"system,omitempty"`
+	Messages    []anthMessage `json:"messages"`
+	Tools       []anthTool    `json:"tools,omitempty"`
 }
 
 type anthText struct {
@@ -142,11 +145,12 @@ func (c *AnthropicClient) Chat(ctx context.Context, systemPrompt string, message
 	}
 
 	reqBody := anthRequest{
-		Model:     c.model,
-		MaxTokens: 4096,
-		System:    []anthText{{Type: "text", Text: systemPrompt}},
-		Messages:  anthMsgs,
-		Tools:     anthTools,
+		Model:       c.model,
+		MaxTokens:   4096,
+		Temperature: c.temperature,
+		System:      []anthText{{Type: "text", Text: systemPrompt}},
+		Messages:    anthMsgs,
+		Tools:       anthTools,
 	}
 
 	body, err := json.Marshal(reqBody)

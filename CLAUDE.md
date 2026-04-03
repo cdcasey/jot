@@ -25,7 +25,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
 
 - **Language:** Go
 - **Database:** SQLite (via `modernc.org/sqlite` - pure Go, no CGO)
-- **LLM:** Anthropic Claude API (official Go SDK: `github.com/anthropic-ai/anthropic-sdk-go`)
+- **LLM:** Anthropic, OpenAI, Gemini, Ollama (see Multi-Provider LLM Support)
 - **Discord:** `github.com/bwmarrin/discordgo`
 - **Config:** Environment variables or `.env` file
 
@@ -210,9 +210,12 @@ The agent should:
 
 ```
 # LLM Provider (choose one)
-LLM_PROVIDER=anthropic         # anthropic or openai
+LLM_PROVIDER=anthropic         # anthropic, openai, gemini, or ollama
 ANTHROPIC_API_KEY=sk-ant-...   # If using Anthropic
 OPENAI_API_KEY=sk-...          # If using OpenAI
+GEMINI_API_KEY=...             # If using Gemini
+LLM_MODEL=...                 # Optional: override default model for the provider
+LLM_TEMPERATURE=...           # Optional: 0.0-1.0 for Anthropic, 0.0-2.0 for OpenAI/Gemini (omit for provider default)
 
 DISCORD_BOT_TOKEN=...
 DISCORD_WEBHOOK_URL=...        # For outbound notifications
@@ -227,79 +230,28 @@ LLM_EVAL_MODEL=claude-sonnet-4-5-20250514  # Model for the LLM-as-judge
 
 ## Multi-Provider LLM Support
 
-The agent should support both Anthropic and OpenAI APIs, selectable at runtime via config/environment. This allows using OAuth tokens from either provider.
+Four providers are supported, selectable at runtime via `LLM_PROVIDER`:
 
-### Implementation Approach
+| Provider | `LLM_PROVIDER` | Default Model | API Key Env Var | Notes |
+|----------|----------------|---------------|-----------------|-------|
+| Anthropic | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` | Also supports OAuth via `ANTHROPIC_AUTH_TOKEN` |
+| OpenAI | `openai` | `gpt-4o` | `OPENAI_API_KEY` | |
+| Gemini | `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` | Uses Gemini's OpenAI-compatible endpoint |
+| Ollama | `ollama` | `llama3.1` | (none) | Local models via `OLLAMA_BASE_URL` |
 
-Define an `LLMClient` interface that abstracts the provider:
+### Architecture
 
-```go
-// internal/llm/client.go
+A `Client` interface abstracts the provider:
 
-type Message struct {
-    Role    string // "user", "assistant", "system"
-    Content string
-}
+- `internal/llm/anthropic.go` — Raw HTTP implementation (not the SDK) for Anthropic
+- `internal/llm/openai.go` — OpenAI SDK implementation, reused by Gemini and Ollama with different base URLs
+- `internal/llm/provider.go` — Factory that routes `ProviderConfig` to the correct implementation
 
-type ToolCall struct {
-    Name   string
-    Params map[string]any
-}
+Gemini and Ollama both reuse `OpenAIClient` with a custom base URL — no additional SDK dependencies.
 
-type Response struct {
-    Content   string
-    ToolCalls []ToolCall
-}
+### Temperature
 
-type LLMClient interface {
-    Chat(ctx context.Context, messages []Message, tools []Tool) (*Response, error)
-}
-```
-
-Then implement for each provider:
-
-```go
-// internal/llm/anthropic.go
-type AnthropicClient struct { ... }
-
-// internal/llm/openai.go  
-type OpenAIClient struct { ... }
-```
-
-### Provider Selection
-
-```go
-// internal/llm/provider.go
-
-func NewClient(provider string, apiKey string) (LLMClient, error) {
-    switch provider {
-    case "anthropic":
-        return NewAnthropicClient(apiKey)
-    case "openai":
-        return NewOpenAIClient(apiKey)
-    default:
-        return nil, fmt.Errorf("unknown provider: %s", provider)
-    }
-}
-```
-
-### Model Configuration
-
-```
-# Optional: specify model (defaults to claude-sonnet-4-20250514 or gpt-4o)
-LLM_MODEL=claude-sonnet-4-20250514
-```
-
-### SDKs
-
-- **Anthropic:** `github.com/anthropic-ai/anthropic-sdk-go`
-- **OpenAI:** `github.com/openai/openai-go`
-
-Both support tool calling. The interface abstraction means the agent core doesn't care which provider is in use - it just calls `client.Chat()` with messages and tools.
-
-### Tool Schema Translation
-
-Anthropic and OpenAI have slightly different tool/function calling formats. The provider implementations should translate from the internal `Tool` definition to the provider-specific format. Keep the internal representation simple and do the translation at the edges.
+All providers accept an optional `LLM_TEMPERATURE` env var. When omitted, the provider's default is used (typically 1.0). When set to `0`, the model is fully deterministic. Anthropic accepts 0.0-1.0; OpenAI/Gemini accept 0.0-2.0.
 
 ## Build & Run
 

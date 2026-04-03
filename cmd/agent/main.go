@@ -37,11 +37,12 @@ func main() {
 	}
 
 	client, err := llm.NewClient(llm.ProviderConfig{
-		Provider:  cfg.LLMProvider,
-		APIKey:    apiKey,
-		AuthToken: cfg.AnthropicToken,
-		Model:     cfg.LLMModel,
-		BaseURL:   cfg.OllamaBaseURL,
+		Provider:    cfg.LLMProvider,
+		APIKey:      apiKey,
+		AuthToken:   cfg.AnthropicToken,
+		Model:       cfg.LLMModel,
+		BaseURL:     cfg.OllamaBaseURL,
+		Temperature: cfg.LLMTemperature,
 	})
 	if err != nil {
 		log.Fatalf("failed to create LLM client: %v", err)
