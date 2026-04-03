@@ -12,6 +12,7 @@ type Config struct {
 	AnthropicKey     string // API key (X-Api-Key header)
 	AnthropicToken   string // OAuth token (Authorization: Bearer header)
 	OpenAIKey        string
+	GeminiKey        string
 	LLMModel         string
 	OllamaBaseURL    string
 	DiscordToken     string
@@ -30,6 +31,7 @@ func Load() *Config {
 		AnthropicKey:     os.Getenv("ANTHROPIC_API_KEY"),
 		AnthropicToken:   os.Getenv("ANTHROPIC_AUTH_TOKEN"),
 		OpenAIKey:        os.Getenv("OPENAI_API_KEY"),
+		GeminiKey:        os.Getenv("GEMINI_API_KEY"),
 		LLMModel:         os.Getenv("LLM_MODEL"),
 		OllamaBaseURL:    envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
 		DiscordToken:     os.Getenv("DISCORD_BOT_TOKEN"),

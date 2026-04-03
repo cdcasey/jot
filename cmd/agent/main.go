@@ -29,8 +29,11 @@ func main() {
 	defer database.Close()
 
 	apiKey := cfg.AnthropicKey
-	if cfg.LLMProvider == "openai" {
+	switch cfg.LLMProvider {
+	case "openai":
 		apiKey = cfg.OpenAIKey
+	case "gemini":
+		apiKey = cfg.GeminiKey
 	}
 
 	client, err := llm.NewClient(llm.ProviderConfig{
