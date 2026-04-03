@@ -7,6 +7,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
+func envFloat64(key string) *float64 {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return &f
+		}
+	}
+	return nil
+}
+
 type Config struct {
 	LLMProvider      string // anthropic, openai, ollama
 	AnthropicKey     string // API key (X-Api-Key header)
@@ -20,7 +29,8 @@ type Config struct {
 	DiscordUserID    string
 	DatabasePath     string
 	CheckInCron      string
-	MaxContextTokens int    // max tokens for LLM context window (0 = use default)
+	MaxContextTokens int      // max tokens for LLM context window (0 = use default)
+	LLMTemperature   *float64 // nil = provider default
 }
 
 func Load() *Config {
@@ -40,6 +50,7 @@ func Load() *Config {
 		DatabasePath:     envOr("DATABASE_PATH", "./data.db"),
 		CheckInCron:      envOr("CHECK_IN_CRON", "0 9 * * *"),
 		MaxContextTokens: envInt("MAX_CONTEXT_TOKENS", 180000),
+		LLMTemperature:   envFloat64("LLM_TEMPERATURE"),
 	}
 }
 

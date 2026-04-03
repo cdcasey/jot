@@ -11,11 +11,12 @@ import (
 )
 
 type OpenAIClient struct {
-	client openai.Client
-	model  string
+	client      openai.Client
+	model       string
+	temperature *float64
 }
 
-func NewOpenAIClient(apiKey, model, baseURL string) *OpenAIClient {
+func NewOpenAIClient(apiKey, model, baseURL string, temperature *float64) *OpenAIClient {
 	var opts []option.RequestOption
 	if apiKey != "" {
 		opts = append(opts, option.WithAPIKey(apiKey))
@@ -27,7 +28,7 @@ func NewOpenAIClient(apiKey, model, baseURL string) *OpenAIClient {
 	if model == "" {
 		model = string(openai.ChatModelGPT4o)
 	}
-	return &OpenAIClient{client: client, model: model}
+	return &OpenAIClient{client: client, model: model, temperature: temperature}
 }
 
 func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt string, messages []Message, tools []Tool) (*Response, error) {
@@ -82,11 +83,16 @@ func (c *OpenAIClient) Chat(ctx context.Context, systemPrompt string, messages [
 		}
 	}
 
-	resp, err := c.client.Chat.Completions.New(ctx, openai.ChatCompletionNewParams{
+	params := openai.ChatCompletionNewParams{
 		Model:    openai.ChatModel(c.model),
 		Messages: oaiMsgs,
 		Tools:    oaiTools,
-	})
+	}
+	if c.temperature != nil {
+		params.Temperature = param.NewOpt(*c.temperature)
+	}
+
+	resp, err := c.client.Chat.Completions.New(ctx, params)
 	if err != nil {
 		return nil, fmt.Errorf("openai chat: %w", err)
 	}
