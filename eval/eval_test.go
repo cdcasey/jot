@@ -54,6 +54,8 @@ func buildClient(t *testing.T, providerVar, modelVar string) (llm.Client, string
 	switch provider {
 	case "openai":
 		cfg.APIKey = os.Getenv("OPENAI_API_KEY")
+	case "gemini":
+		cfg.APIKey = os.Getenv("GEMINI_API_KEY")
 	case "ollama":
 		cfg.BaseURL = envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1")
 	}
