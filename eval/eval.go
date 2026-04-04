@@ -338,7 +338,7 @@ func judgeResponse(ctx context.Context, client llm.Client, prompt, response, rub
 	}
 	judgePrompt := fmt.Sprintf("User prompt: %s%s\n\n<assistant_response>\n%s\n</assistant_response>\n\nRubric: %s\n\nRespond with ONLY a JSON object.", prompt, toolSection, response, rubric)
 
-	resp, err := client.Chat(ctx, judgeSystemPrompt, []llm.Message{
+	resp, err := llm.ChatWithRetry(ctx, client, judgeSystemPrompt, []llm.Message{
 		{Role: "user", Content: judgePrompt},
 	}, nil) // no tools for judging
 	if err != nil {
