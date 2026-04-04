@@ -325,7 +325,7 @@ func formatToolContext(history []llm.Message) string {
 			}
 		}
 		if msg.ToolCallID != "" && msg.Content != "" {
-			parts = append(parts, fmt.Sprintf("Result: %s", truncate(msg.Content, 500)))
+			parts = append(parts, fmt.Sprintf("Result: %s", msg.Content))
 		}
 	}
 	return strings.Join(parts, "\n")
