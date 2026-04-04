@@ -1,56 +1,118 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/joho/godotenv"
+	"gopkg.in/yaml.v3"
 )
 
-func envFloat64(key string) *float64 {
-	if v := os.Getenv(key); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil {
-			return &f
-		}
-	}
-	return nil
+// ModelConfig defines a named LLM model from config.yaml.
+type ModelConfig struct {
+	Provider    string   `yaml:"provider"`
+	Model       string   `yaml:"model"`
+	BaseURL     string   `yaml:"base_url"`
+	Temperature *float64 `yaml:"temperature"`
+}
+
+// YAMLConfig is the top-level structure of config.yaml.
+type YAMLConfig struct {
+	Models      map[string]ModelConfig `yaml:"models"`
+	ActiveModel string                `yaml:"active_model"`
 }
 
 type Config struct {
-	LLMProvider      string // anthropic, openai, gemini, ollama
-	AnthropicKey     string // API key (X-Api-Key header)
-	AnthropicToken   string // OAuth token (Authorization: Bearer header)
-	OpenAIKey        string
-	GeminiKey        string
-	LLMModel         string
-	OllamaBaseURL    string
+	// LLM (resolved from YAML active_model)
+	LLMProvider    string
+	LLMModel       string
+	LLMAPIKey      string
+	LLMAuthToken   string   // Anthropic OAuth token
+	LLMBaseURL     string
+	LLMTemperature *float64
+
+	// All defined models (for eval or future multi-model use)
+	Models      map[string]ModelConfig
+	ActiveModel string
+
+	// App
 	DiscordToken     string
 	DiscordWebhook   string
 	DiscordUserID    string
 	DatabasePath     string
 	CheckInCron      string
-	MaxContextTokens int      // max tokens for LLM context window (0 = use default)
-	LLMTemperature   *float64 // nil = provider default
+	MaxContextTokens int
 }
 
 func Load() *Config {
-	_ = godotenv.Load() // ignore error if no .env
+	_ = godotenv.Load() // secrets from .env
 
-	return &Config{
-		LLMProvider:      envOr("LLM_PROVIDER", "anthropic"),
-		AnthropicKey:     os.Getenv("ANTHROPIC_API_KEY"),
-		AnthropicToken:   os.Getenv("ANTHROPIC_AUTH_TOKEN"),
-		OpenAIKey:        os.Getenv("OPENAI_API_KEY"),
-		GeminiKey:        os.Getenv("GEMINI_API_KEY"),
-		LLMModel:         os.Getenv("LLM_MODEL"),
-		OllamaBaseURL:    envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1"),
+	cfg := &Config{
 		DiscordToken:     os.Getenv("DISCORD_BOT_TOKEN"),
 		DiscordWebhook:   os.Getenv("DISCORD_WEBHOOK_URL"),
 		DiscordUserID:    os.Getenv("DISCORD_USER_ID"),
 		DatabasePath:     envOr("DATABASE_PATH", "./data.db"),
 		CheckInCron:      envOr("CHECK_IN_CRON", "0 9 * * *"),
 		MaxContextTokens: envInt("MAX_CONTEXT_TOKENS", 180000),
-		LLMTemperature:   envFloat64("LLM_TEMPERATURE"),
+		LLMAuthToken:     os.Getenv("ANTHROPIC_AUTH_TOKEN"),
+	}
+
+	yc, err := loadYAML("config.yaml")
+	if err != nil {
+		// No config.yaml — fall back to env vars for backward compat.
+		cfg.LLMProvider = envOr("LLM_PROVIDER", "anthropic")
+		cfg.LLMModel = os.Getenv("LLM_MODEL")
+		cfg.LLMTemperature = envFloat64("LLM_TEMPERATURE")
+		cfg.LLMBaseURL = envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+		cfg.LLMAPIKey = resolveAPIKey(cfg.LLMProvider)
+		return cfg
+	}
+
+	cfg.Models = yc.Models
+	cfg.ActiveModel = yc.ActiveModel
+
+	mc, ok := yc.Models[yc.ActiveModel]
+	if !ok {
+		fmt.Fprintf(os.Stderr, "warning: active_model %q not found in config.yaml, falling back to env vars\n", yc.ActiveModel)
+		cfg.LLMProvider = envOr("LLM_PROVIDER", "anthropic")
+		cfg.LLMModel = os.Getenv("LLM_MODEL")
+		cfg.LLMTemperature = envFloat64("LLM_TEMPERATURE")
+		cfg.LLMBaseURL = envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+		cfg.LLMAPIKey = resolveAPIKey(cfg.LLMProvider)
+		return cfg
+	}
+
+	cfg.LLMProvider = mc.Provider
+	cfg.LLMModel = mc.Model
+	cfg.LLMBaseURL = mc.BaseURL
+	cfg.LLMTemperature = mc.Temperature
+	cfg.LLMAPIKey = resolveAPIKey(mc.Provider)
+
+	return cfg
+}
+
+func loadYAML(path string) (*YAMLConfig, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var yc YAMLConfig
+	if err := yaml.Unmarshal(data, &yc); err != nil {
+		return nil, fmt.Errorf("parsing %s: %w", path, err)
+	}
+	return &yc, nil
+}
+
+// resolveAPIKey picks the right env var based on provider (env-var fallback path only).
+func resolveAPIKey(provider string) string {
+	switch provider {
+	case "openai":
+		return os.Getenv("OPENAI_API_KEY")
+	case "gemini":
+		return os.Getenv("GEMINI_API_KEY")
+	default:
+		return os.Getenv("ANTHROPIC_API_KEY")
 	}
 }
 
@@ -68,4 +130,13 @@ func envInt(key string, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+func envFloat64(key string) *float64 {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			return &f
+		}
+	}
+	return nil
 }

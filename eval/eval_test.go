@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/chris/jot/config"
 	"github.com/chris/jot/internal/llm"
 	"github.com/joho/godotenv"
 )
@@ -17,8 +18,11 @@ func TestEval(t *testing.T) {
 	// Load .env from project root (same as the main app).
 	_ = godotenv.Load("../.env")
 
-	agentClient, agentModel := buildClient(t, "LLM_PROVIDER", "LLM_MODEL")
-	judgeClient, judgeModel := buildClient(t, "LLM_EVAL_PROVIDER", "LLM_EVAL_MODEL")
+	// Load YAML config for model definitions + API key resolution.
+	cfg := config.Load()
+
+	agentClient, agentModel := buildClient(t, cfg, "LLM_PROVIDER", "LLM_MODEL")
+	judgeClient, judgeModel := buildClient(t, cfg, "LLM_EVAL_PROVIDER", "LLM_EVAL_MODEL")
 
 	casesPath := filepath.Join(".", "cases.json")
 	if _, err := os.Stat(casesPath); os.IsNotExist(err) {
@@ -28,10 +32,11 @@ func TestEval(t *testing.T) {
 	RunEval(t, casesPath, agentClient, judgeClient, agentModel, judgeModel)
 }
 
-// buildClient creates an LLM client from the given env var names.
-// The fallback vars (providerVar → LLM_PROVIDER, modelVar → LLM_MODEL) are used
-// when the primary vars are empty — so LLM_EVAL_PROVIDER falls back to LLM_PROVIDER.
-func buildClient(t *testing.T, providerVar, modelVar string) (llm.Client, string) {
+// buildClient creates an LLM client. Env var overrides (e.g. LLM_EVAL_MODEL)
+// take precedence over the YAML active_model, so you can still do:
+//
+//	LLM_MODEL=claude-haiku-3-5-20241022 make eval
+func buildClient(t *testing.T, cfg *config.Config, providerVar, modelVar string) (llm.Client, string) {
 	t.Helper()
 
 	provider := envOr(providerVar, "")
@@ -39,28 +44,41 @@ func buildClient(t *testing.T, providerVar, modelVar string) (llm.Client, string
 
 	// Fall back to the base vars if the specific ones aren't set.
 	if provider == "" {
-		provider = envOr("LLM_PROVIDER", "anthropic")
+		provider = envOr("LLM_PROVIDER", "")
 	}
 	if model == "" {
 		model = envOr("LLM_MODEL", "")
 	}
 
-	cfg := llm.ProviderConfig{
-		Provider:  provider,
-		Model:     model,
-		APIKey:    os.Getenv("ANTHROPIC_API_KEY"),
-		AuthToken: os.Getenv("ANTHROPIC_AUTH_TOKEN"),
+	// If still empty, use the YAML active_model config.
+	if provider == "" {
+		provider = cfg.LLMProvider
 	}
-	switch provider {
-	case "openai":
-		cfg.APIKey = os.Getenv("OPENAI_API_KEY")
-	case "gemini":
-		cfg.APIKey = os.Getenv("GEMINI_API_KEY")
-	case "ollama":
-		cfg.BaseURL = envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+	if model == "" {
+		model = cfg.LLMModel
+	}
+	if provider == "" {
+		provider = "anthropic"
 	}
 
-	client, err := llm.NewClient(cfg)
+	pcfg := llm.ProviderConfig{
+		Provider:  provider,
+		Model:     model,
+		AuthToken: os.Getenv("ANTHROPIC_AUTH_TOKEN"),
+	}
+
+	// Resolve API key: check YAML models for an api_key_env pointer,
+	// otherwise fall back to well-known env vars.
+	pcfg.APIKey = resolveAPIKey(provider)
+
+	if provider == "ollama" {
+		pcfg.BaseURL = envOr("OLLAMA_BASE_URL", "http://localhost:11434/v1")
+		if mc, ok := cfg.Models[cfg.ActiveModel]; ok && mc.Provider == "ollama" && mc.BaseURL != "" {
+			pcfg.BaseURL = mc.BaseURL
+		}
+	}
+
+	client, err := llm.NewClient(pcfg)
 	if err != nil {
 		t.Fatalf("creating %s/%s client: %v", providerVar, modelVar, err)
 	}
@@ -70,6 +88,17 @@ func buildClient(t *testing.T, providerVar, modelVar string) (llm.Client, string
 		displayModel = provider + " (default)"
 	}
 	return client, displayModel
+}
+
+func resolveAPIKey(provider string) string {
+	switch provider {
+	case "openai":
+		return os.Getenv("OPENAI_API_KEY")
+	case "gemini":
+		return os.Getenv("GEMINI_API_KEY")
+	default:
+		return os.Getenv("ANTHROPIC_API_KEY")
+	}
 }
 
 func envOr(key, fallback string) string {
