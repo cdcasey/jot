@@ -28,20 +28,12 @@ func main() {
 	}
 	defer database.Close()
 
-	apiKey := cfg.AnthropicKey
-	switch cfg.LLMProvider {
-	case "openai":
-		apiKey = cfg.OpenAIKey
-	case "gemini":
-		apiKey = cfg.GeminiKey
-	}
-
 	client, err := llm.NewClient(llm.ProviderConfig{
 		Provider:    cfg.LLMProvider,
-		APIKey:      apiKey,
-		AuthToken:   cfg.AnthropicToken,
+		APIKey:      cfg.LLMAPIKey,
+		AuthToken:   cfg.LLMAuthToken,
 		Model:       cfg.LLMModel,
-		BaseURL:     cfg.OllamaBaseURL,
+		BaseURL:     cfg.LLMBaseURL,
 		Temperature: cfg.LLMTemperature,
 	})
 	if err != nil {

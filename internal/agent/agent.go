@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
 	"github.com/chris/jot/internal/db"
@@ -94,26 +93,9 @@ func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage stri
 	return "I hit the maximum number of tool calls. Here's what I have so far.", messages, nil
 }
 
-const maxRetries = 3
-
 // chatWithRetry wraps client.Chat with retry on rate limit (429) errors.
 func (a *Agent) chatWithRetry(ctx context.Context, systemPrompt string, messages []llm.Message, tools []llm.Tool) (*llm.Response, error) {
-	for attempt := 0; ; attempt++ {
-		resp, err := a.client.Chat(ctx, systemPrompt, messages, tools)
-		if err == nil {
-			return resp, nil
-		}
-		if attempt >= maxRetries-1 || !strings.Contains(err.Error(), "429") {
-			return nil, err
-		}
-		wait := time.Duration(15*(attempt+1)) * time.Second
-		log.Printf("rate limited, retrying in %s (attempt %d/%d)", wait, attempt+1, maxRetries)
-		select {
-		case <-time.After(wait):
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		}
-	}
+	return llm.ChatWithRetry(ctx, a.client, systemPrompt, messages, tools)
 }
 
 func (a *Agent) executeTool(ctx context.Context, name string, params map[string]any) string {

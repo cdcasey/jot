@@ -62,8 +62,9 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
 /internal/watch/
     fetch.go                 # URL fetching + HTML-to-text extraction
     runner.go                # Watch execution: fetch → LLM extract → dedup → store
+/config.example.yaml             # YAML config template (checked in)
 /config/
-    config.go                # Environment/config loading
+    config.go                # YAML + env config loading
 /eval/
     eval.go                  # Eval runner, seeder, asserter, LLM-as-judge
     eval_test.go             # Test entry point (guarded by RUN_EVAL=1)
@@ -206,43 +207,62 @@ The agent should:
 - Not be annoying - check-ins should be useful, not nagging
 - Admit when it doesn't know something rather than making things up
 
-## Environment Variables
+## Configuration
+
+LLM models are defined in `config.yaml` (not checked in). Copy from `config.example.yaml`:
+
+```yaml
+models:
+  anthropic-sonnet:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    temperature: 0.7
+  ollama-local:
+    provider: ollama
+    model: llama3.1
+    base_url: http://localhost:11434/v1
+    temperature: 0.7
+active_model: anthropic-sonnet
+```
+
+API keys and secrets go in `.env`:
 
 ```
-# LLM Provider (choose one)
-LLM_PROVIDER=anthropic         # anthropic, openai, gemini, or ollama
-ANTHROPIC_API_KEY=sk-ant-...   # If using Anthropic
-OPENAI_API_KEY=sk-...          # If using OpenAI
-GEMINI_API_KEY=...             # If using Gemini
-LLM_MODEL=...                 # Optional: override default model for the provider
-LLM_TEMPERATURE=...           # Optional: 0.0-1.0 for Anthropic, 0.0-2.0 for OpenAI/Gemini (omit for provider default)
+# API keys (resolved by provider name)
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=...
+ANTHROPIC_AUTH_TOKEN=...       # Optional: OAuth token (Bearer auth)
 
+# App
 DISCORD_BOT_TOKEN=...
 DISCORD_WEBHOOK_URL=...        # For outbound notifications
+DISCORD_USER_ID=...
 DATABASE_PATH=./data.db        # SQLite file location
 CHECK_IN_CRON="0 9 * * *"      # Daily at 9am (optional)
 MAX_CONTEXT_TOKENS=180000      # Token budget for LLM context (default: 180000)
 
-# Eval-specific (optional, fall back to LLM_PROVIDER/LLM_MODEL)
-LLM_EVAL_PROVIDER=anthropic    # Provider for the LLM-as-judge
-LLM_EVAL_MODEL=claude-sonnet-4-5-20250514  # Model for the LLM-as-judge
+# Eval-specific (optional, fall back to active_model from YAML)
+LLM_EVAL_PROVIDER=anthropic
+LLM_EVAL_MODEL=claude-sonnet-4-5-20250514
 ```
+
+If `config.yaml` is missing, the app falls back to `LLM_PROVIDER` and `LLM_MODEL` env vars.
 
 ## Multi-Provider LLM Support
 
-Four providers are supported, selectable at runtime via `LLM_PROVIDER`:
+Four providers are supported. API keys are resolved by provider name from `.env`:
 
-| Provider | `LLM_PROVIDER` | Default Model | API Key Env Var | Notes |
-|----------|----------------|---------------|-----------------|-------|
-| Anthropic | `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` | Also supports OAuth via `ANTHROPIC_AUTH_TOKEN` |
-| OpenAI | `openai` | `gpt-4o` | `OPENAI_API_KEY` | |
-| Gemini | `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` | Uses Gemini's OpenAI-compatible endpoint |
-| Ollama | `ollama` | `llama3.1` | (none) | Local models via `OLLAMA_BASE_URL` |
+| Provider | Default Model | API Key Env Var | Notes |
+|----------|---------------|-----------------|-------|
+| `anthropic` | `claude-sonnet-4-20250514` | `ANTHROPIC_API_KEY` | Also supports OAuth via `ANTHROPIC_AUTH_TOKEN` |
+| `openai` | `gpt-4o` | `OPENAI_API_KEY` | |
+| `gemini` | `gemini-2.5-flash` | `GEMINI_API_KEY` | Uses Gemini's OpenAI-compatible endpoint |
+| `ollama` | `llama3.1` | (none) | Set `base_url` in YAML |
 
 ### Architecture
 
-A `Client` interface abstracts the provider:
-
+- `config/config.go` — Loads `config.yaml` (model definitions) + `.env` (secrets), merges into `Config`
 - `internal/llm/anthropic.go` — Raw HTTP implementation (not the SDK) for Anthropic
 - `internal/llm/openai.go` — OpenAI SDK implementation, reused by Gemini and Ollama with different base URLs
 - `internal/llm/provider.go` — Factory that routes `ProviderConfig` to the correct implementation
@@ -251,7 +271,7 @@ Gemini and Ollama both reuse `OpenAIClient` with a custom base URL — no additi
 
 ### Temperature
 
-All providers accept an optional `LLM_TEMPERATURE` env var. When omitted, the provider's default is used (typically 1.0). When set to `0`, the model is fully deterministic. Anthropic accepts 0.0-1.0; OpenAI/Gemini accept 0.0-2.0.
+Set `temperature` per model in `config.yaml`. When omitted, the provider's default is used (typically 1.0). Anthropic accepts 0.0-1.0; OpenAI/Gemini accept 0.0-2.0.
 
 ## Build & Run
 

@@ -1,0 +1,31 @@
+# Model definitions for Jot.
+# Copy this file to config.yaml and customize.
+# API keys are read from .env — keyed by provider:
+#   anthropic → ANTHROPIC_API_KEY
+#   openai    → OPENAI_API_KEY
+#   gemini    → GEMINI_API_KEY
+#   ollama    → (none)
+
+models:
+  anthropic-sonnet:
+    provider: anthropic
+    model: claude-sonnet-4-20250514
+    temperature: 0.7
+
+  openai-gpt4o:
+    provider: openai
+    model: gpt-4o
+    temperature: 0.7
+
+  gemini-flash:
+    provider: gemini
+    model: gemini-2.5-flash
+    temperature: 0.7
+
+  ollama-local:
+    provider: ollama
+    model: llama3.1
+    base_url: http://localhost:11434/v1
+    temperature: 0.7
+
+active_model: anthropic-sonnet

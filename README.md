@@ -8,19 +8,24 @@ A personal assistant for tracking open loops — anything on your mind. Uses Cla
 go build -o jot ./cmd/agent
 ```
 
-Copy `.env` and fill in your API key:
+Copy the example config and set your model:
 
 ```bash
-cp .env .env.local  # or just edit .env directly
+cp config.example.yaml config.yaml
 ```
 
-Set `LLM_PROVIDER` to one of:
-- `anthropic` — requires `ANTHROPIC_API_KEY` (default)
-- `openai` — requires `OPENAI_API_KEY`
-- `gemini` — requires `GEMINI_API_KEY` (defaults to gemini-2.5-flash)
-- `ollama` — no key needed, runs locally
+Edit `config.yaml` to define models and set `active_model`. API keys go in `.env`:
 
-Optionally set `LLM_TEMPERATURE` to control randomness (omit for provider default).
+```bash
+# .env
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=...
+```
+
+Keys are resolved by provider name: `anthropic` reads `ANTHROPIC_API_KEY`, `openai` reads `OPENAI_API_KEY`, etc. Ollama needs no key.
+
+If no `config.yaml` exists, the app falls back to `LLM_PROVIDER` and `LLM_MODEL` env vars for backward compatibility.
 
 ## Usage
 
@@ -40,16 +45,12 @@ jot> exit
 echo "list my open things" | ./jot
 ```
 
-### Gemini
+### Switching models
 
-```bash
-LLM_PROVIDER=gemini GEMINI_API_KEY=your-key ./jot
-```
+Edit `active_model` in `config.yaml`:
 
-### Ollama (local)
-
-```bash
-LLM_PROVIDER=ollama LLM_MODEL=llama3.1 ./jot
+```yaml
+active_model: ollama-local
 ```
 
 ### Discord bot
