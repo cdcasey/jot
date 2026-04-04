@@ -18,8 +18,8 @@ func TestEval(t *testing.T) {
 	// Load .env from project root (same as the main app).
 	_ = godotenv.Load("../.env")
 
-	// Load YAML config for model definitions + API key resolution.
-	cfg := config.Load()
+	// Load YAML config from project root (same as .env above).
+	cfg := config.LoadFrom("../config.yaml")
 
 	agentClient, agentModel := buildClient(t, cfg, "LLM_PROVIDER", "LLM_MODEL")
 	judgeClient, judgeModel := buildClient(t, cfg, "LLM_EVAL_PROVIDER", "LLM_EVAL_MODEL")
