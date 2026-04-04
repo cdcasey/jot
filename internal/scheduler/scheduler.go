@@ -193,6 +193,12 @@ func (s *Scheduler) pruneOldData() {
 	} else if n > 0 {
 		log.Printf("scheduler: pruned %d old watch result(s)", n)
 	}
+
+	if n, err := s.db.PruneOldSummaries(30); err != nil {
+		log.Printf("scheduler: pruning conversation summaries: %v", err)
+	} else if n > 0 {
+		log.Printf("scheduler: pruned %d old conversation summary(ies)", n)
+	}
 }
 
 // loadWatches registers enabled watches with cron expressions into the cron scheduler.

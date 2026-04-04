@@ -78,6 +78,38 @@ func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage stri
 			ToolCalls: resp.ToolCalls,
 		})
 
+		// NOTE TO SELF: if LLM confabulations become a problem when no data is available, make this change
+		//
+		// The injection point is lines 82-89 — the loop that executes tool calls and appends results. Right now result goes
+		// straight from executeTool into the message. The change goes here.
+
+		// In /Users/chris/dev/jot/internal/agent/agent.go, find this block (lines 82-89):
+
+		//               for _, tc := range resp.ToolCalls {
+		//                       result := a.executeTool(ctx, tc.Name, tc.Params)
+		//                       log.Printf("tool %s → %s", tc.Name, truncate(result, 200))
+		//                       messages = append(messages, llm.Message{
+		//                               Role:       "user",
+		//                               Content:    result,
+		//                               ToolCallID: tc.ID,
+		//                       })
+		//               }
+
+		// Replace with:
+
+		//               for _, tc := range resp.ToolCalls {
+		//                       result := a.executeTool(ctx, tc.Name, tc.Params)
+		//                       if result == "null" || result == "[]" {
+		//                               result = fmt.Sprintf("[%s returned no results. Report that nothing was found — do not fa
+		//                       }
+		//                       log.Printf("tool %s → %s", tc.Name, truncate(result, 200))
+		//                       messages = append(messages, llm.Message{
+		//                               Role:       "user",
+		//                               Content:    result,
+		//                               ToolCallID: tc.ID,
+		//                       })
+		//               }
+
 		// Execute each tool call and append results
 		for _, tc := range resp.ToolCalls {
 			result := a.executeTool(ctx, tc.Name, tc.Params)
