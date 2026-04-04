@@ -197,11 +197,7 @@ func (s *Scheduler) pruneOldData() {
 	if n, err := s.db.PruneOldSummaries(30); err != nil {
 		log.Printf("scheduler: pruning conversation summaries: %v", err)
 	} else if n > 0 {
-		summary_word := "summaries"
-		if n == 1 {
-			summary_word = "summary"
-		}
-		log.Printf("scheduler: pruned %d old conversation %s", n, summary_word)
+		log.Printf("scheduler: pruned %d old conversation summary(ies)", n)
 	}
 }
 
