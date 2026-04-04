@@ -46,6 +46,13 @@ type Config struct {
 }
 
 func Load() *Config {
+	return LoadFrom("config.yaml")
+}
+
+// LoadFrom loads config from the given YAML path (if it exists) plus .env and
+// environment variables. If the YAML file is missing, all LLM settings fall
+// back to env vars for backward compatibility.
+func LoadFrom(yamlPath string) *Config {
 	_ = godotenv.Load() // secrets from .env
 
 	cfg := &Config{
@@ -58,7 +65,7 @@ func Load() *Config {
 		LLMAuthToken:     os.Getenv("ANTHROPIC_AUTH_TOKEN"),
 	}
 
-	yc, err := loadYAML("config.yaml")
+	yc, err := loadYAML(yamlPath)
 	if err != nil {
 		// No config.yaml — fall back to env vars for backward compat.
 		cfg.LLMProvider = envOr("LLM_PROVIDER", "anthropic")
