@@ -82,7 +82,7 @@ func (a *Agent) Run(ctx context.Context, history []llm.Message, userMessage stri
 		for _, tc := range resp.ToolCalls {
 			result := a.executeTool(ctx, tc.Name, tc.Params)
 			if result == "null" || result == "[]" {
-				result = fmt.Sprintf("[%s returned no results. Report that nothing was found — do not fabricate data.]", tc.Name)
+				result = fmt.Sprintf("[%s returned no results.]", tc.Name)
 			}
 			log.Printf("tool %s → %s", tc.Name, truncate(result, 200))
 			messages = append(messages, llm.Message{
