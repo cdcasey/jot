@@ -25,3 +25,23 @@ func TestNoGetTimeTool(t *testing.T) {
 		}
 	}
 }
+
+func TestNoMemoryTools(t *testing.T) {
+	memoryTools := map[string]bool{
+		"save_memory": true, "search_memories": true, "list_recent_memories": true,
+		"update_memory": true, "delete_memory": true,
+	}
+	for _, tool := range AgentTools {
+		if memoryTools[tool.Name] {
+			t.Errorf("memory tool %q should have been removed", tool.Name)
+		}
+	}
+}
+
+func TestSystemPromptNoMemoryReferences(t *testing.T) {
+	for _, term := range []string{"save_memory", "search_memories", "list_recent_memories"} {
+		if strings.Contains(SystemPrompt, term) {
+			t.Errorf("system prompt should not reference %q", term)
+		}
+	}
+}

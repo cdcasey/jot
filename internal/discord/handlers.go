@@ -42,7 +42,7 @@ func (b *Bot) onMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	// Show typing indicator
 	s.ChannelTyping(m.ChannelID)
 
-	reply, err := b.agent.RunWithConversation(context.Background(), m.Author.ID, content)
+	reply, _, err := b.agent.Run(context.Background(), nil, content)
 	if err != nil {
 		log.Printf("agent error: %v", err)
 		s.ChannelMessageSend(m.ChannelID, "Something went wrong. Try again?")

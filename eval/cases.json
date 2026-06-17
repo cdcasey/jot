@@ -188,39 +188,6 @@
 		}
 	},
 	{
-		"name": "context_memory_recall",
-		"category": "context_integration",
-		"prompt": "Didn't I have an idea about automating my weekly reviews?",
-		"seed": {
-			"memories": [
-				{
-					"content": "User mentioned wanting to automate weekly review process — maybe a scheduled prompt that pulls open items, recent completions, and blockers into a summary",
-					"category": "observation",
-					"tags": ["productivity", "automation"]
-				},
-				{
-					"content": "Discussed switching from VS Code to Neovim for Go development",
-					"category": "observation",
-					"tags": ["tools"]
-				},
-				{
-					"content": "User decided to use tags instead of separate project categories for organizing things",
-					"category": "decision",
-					"tags": ["workflow"]
-				},
-				{
-					"content": "User blocked on API review from team lead, been waiting 3 days",
-					"category": "blocker",
-					"tags": ["work"]
-				}
-			]
-		},
-		"assert": {
-			"tool_called": ["search_memories"],
-			"rubric": "Should find and reference the relevant memory about automating weekly reviews. Should connect it naturally — e.g., mentioning the scheduled prompt idea. Should not hallucinate details that weren't in the memory."
-		}
-	},
-	{
 		"name": "reasoning_tradeoffs",
 		"category": "reasoning",
 		"prompt": "I want to start exercising, learn guitar, and read more, but I only have an hour of free time per day.",
