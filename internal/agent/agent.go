@@ -360,6 +360,41 @@ func (a *Agent) executeTool(ctx context.Context, name string, params map[string]
 		}
 		result, err = a.db.ListWatchResults(w.ID, unnotifiedOnly, limit)
 
+	case "log_habit":
+		name, _ := getString(params, "name")
+		date, hasDate := getString(params, "date")
+		if !hasDate || date == "" {
+			date = time.Now().In(a.userLocation()).Format("2006-01-02")
+		}
+		done := true
+		if v, ok := params["done"]; ok {
+			if b, ok := v.(bool); ok {
+				done = b
+			}
+		}
+		h, created, e := a.db.GetOrCreateHabit(name)
+		if e != nil {
+			err = e
+			break
+		}
+		if done {
+			err = a.db.LogHabit(h.ID, date)
+		} else {
+			err = a.db.UnlogHabit(h.ID, date)
+		}
+		if err == nil {
+			status := "logged"
+			if !done {
+				status = "unlogged"
+			}
+			result = map[string]any{
+				"status":        status,
+				"habit":         h.Name,
+				"date":          date,
+				"habit_created": created,
+			}
+		}
+
 	default:
 		result = map[string]any{"error": "unknown tool: " + name}
 	}

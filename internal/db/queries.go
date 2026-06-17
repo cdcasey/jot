@@ -49,6 +49,20 @@ type Watch struct {
 	UpdatedAt string   `json:"updated_at"`
 }
 
+type Habit struct {
+	ID        int64  `json:"id"`
+	Name      string `json:"name"`
+	Active    bool   `json:"active"`
+	CreatedAt string `json:"created_at"`
+}
+
+type HabitLog struct {
+	ID        int64  `json:"id"`
+	HabitID   int64  `json:"habit_id"`
+	Date      string `json:"date"`
+	CreatedAt string `json:"created_at"`
+}
+
 type WatchResult struct {
 	ID          int64  `json:"id"`
 	WatchID     int64  `json:"watch_id"`

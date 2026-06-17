@@ -77,8 +77,10 @@ func (d *DB) migrate() error {
 		return fmt.Errorf("dropping memories_fts: %w", err)
 	}
 
-	// Drop removed tables.
-	for _, table := range []string{"check_ins", "skills", "reminders", "habit_logs", "memories", "conversations", "conversation_summaries"} {
+	// Drop removed tables. NOTE: habits/habit_logs are NOT listed here —
+	// they were reintroduced as structured tables (see schema.sql) and are
+	// created idempotently via CREATE TABLE IF NOT EXISTS on Open().
+	for _, table := range []string{"check_ins", "skills", "reminders", "memories", "conversations", "conversation_summaries"} {
 		if _, err := d.conn.Exec("DROP TABLE IF EXISTS " + table); err != nil {
 			return fmt.Errorf("dropping %s: %w", table, err)
 		}
