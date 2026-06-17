@@ -29,10 +29,6 @@ func Open(path string) (*DB, error) {
 	if _, err := conn.Exec(schema); err != nil {
 		return nil, fmt.Errorf("running migrations: %w", err)
 	}
-	// Backfill FTS index for any memories that predate the FTS table.
-	if _, err := conn.Exec(`INSERT OR IGNORE INTO memories_fts(rowid, content) SELECT id, content FROM memories`); err != nil {
-		return nil, fmt.Errorf("backfilling FTS: %w", err)
-	}
 	d := &DB{conn: conn}
 	if err := d.migrate(); err != nil {
 		return nil, fmt.Errorf("running data migrations: %w", err)
@@ -71,8 +67,18 @@ func (d *DB) migrate() error {
 		}
 	}
 
+	// Drop memory triggers and FTS table before the base memories table.
+	for _, trigger := range []string{"memories_ai", "memories_ad", "memories_au"} {
+		if _, err := d.conn.Exec("DROP TRIGGER IF EXISTS " + trigger); err != nil {
+			return fmt.Errorf("dropping trigger %s: %w", trigger, err)
+		}
+	}
+	if _, err := d.conn.Exec("DROP TABLE IF EXISTS memories_fts"); err != nil {
+		return fmt.Errorf("dropping memories_fts: %w", err)
+	}
+
 	// Drop removed tables.
-	for _, table := range []string{"check_ins", "skills", "reminders", "habit_logs"} {
+	for _, table := range []string{"check_ins", "skills", "reminders", "habit_logs", "memories", "conversations", "conversation_summaries"} {
 		if _, err := d.conn.Exec("DROP TABLE IF EXISTS " + table); err != nil {
 			return fmt.Errorf("dropping %s: %w", table, err)
 		}

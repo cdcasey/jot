@@ -9,7 +9,25 @@
       "Bash(go build:*)",
       "Bash(go vet:*)",
       "Bash(sqlite3:*)",
-      "Bash(go test:*)"
+      "Bash(go test:*)",
+      "Bash(openspec status *)",
+      "Bash(openspec instructions *)",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('schema:',d['schemaName']\\);print\\('mode:',d['actionContext']['mode']\\);print\\('editRoots:',d['actionContext']['allowedEditRoots']\\)\")",
+      "Bash(sed -i '' '/^\\\\/\\\\/ --- MEMORY_BLOCK_START ---$/,/^\\\\/\\\\/ --- Schedules ---$/{/^\\\\/\\\\/ --- Schedules ---$/!d;}' internal/db/queries_test.go)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"exit $?\")",
+      "Bash(python3 -m json.tool eval/cases.json)",
+      "Bash(rm -f /tmp/smoke.db)",
+      "Bash(DATABASE_PATH=/tmp/smoke.db sh -c 'echo \"idea: redesign onboarding\" | timeout 90 go run ./cmd/agent')",
+      "Bash(echo \"=== exit: $? ===\")",
+      "Bash(DATABASE_PATH=/tmp/smoke.db go run ./cmd/agent)",
+      "Bash(echo \"memories rows: $\\(sqlite3 /tmp/populated.db 'SELECT COUNT\\(*\\) FROM memories;'\\)\")",
+      "Bash(echo \"memories rows now: $\\(sqlite3 /tmp/populated.db 'PRAGMA trusted_schema=ON; SELECT COUNT\\(*\\) FROM memories;'\\)\")",
+      "Bash(echo \"things rows: $\\(sqlite3 /tmp/populated.db 'SELECT COUNT\\(*\\) FROM things;'\\)\")",
+      "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('schema:',d['schemaName']\\);print\\('mode:',d['actionContext']['mode']\\);print\\('changeRoot:',d['changeRoot']\\);print\\('changesDir:',d['planningHome']['changesDir']\\);print\\('artifacts:',[\\(a['id'],a['status']\\) for a in d['artifacts']]\\);print\\('specs existing:',d['artifactPaths']['specs']['existingOutputPaths']\\)\")",
+      "Bash(openspec validate *)",
+      "Bash(openspec list *)",
+      "Bash(grep -v '^openspec/changes/archive$')"
     ]
   },
   "outputStyle": "Explanatory"

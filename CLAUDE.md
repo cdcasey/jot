@@ -40,9 +40,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     queries_helpers.go       # Shared helpers (updateRow, nullStr, allowedColumns)
     queries_things.go        # Things + Summary queries
     queries_notes.go         # Notes queries (internal config only, not exposed as LLM tools)
-    queries_memories.go      # Memories queries
     queries_schedule.go      # Schedules + one-shot reminders queries
-    queries_conversations.go # Conversation persistence + summaries
     queries_watches.go       # Watch + watch result queries
 /internal/llm/
     client.go                # LLMClient interface
@@ -52,8 +50,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     tools.go                 # Tool definitions (provider-agnostic)
     prompt.go                # System prompt
 /internal/agent/
-    agent.go                 # Core agent loop + timezone helpers
-    conversation.go          # RunWithConversation, Summarize (persistent history)
+    agent.go                 # Core agent loop + timezone helpers (stateless Run)
 /internal/discord/
     bot.go                   # Discord bot setup
     handlers.go              # Message handlers
@@ -94,21 +91,6 @@ CREATE TABLE notes (                  -- Internal config only (timezone, discord
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE memories (
-    id INTEGER PRIMARY KEY,
-    content TEXT NOT NULL,
-    category TEXT NOT NULL DEFAULT 'observation',  -- observation, decision, blocker, preference, event, reflection, habit
-    tags TEXT,                         -- JSON array
-    thing_id INTEGER REFERENCES things(id),
-    source TEXT NOT NULL DEFAULT 'agent',
-    expires_at TEXT,
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
--- FTS5 full-text search index (content-sync'd with memories table via triggers)
-CREATE VIRTUAL TABLE memories_fts USING fts5(content, content_rowid='id', content='memories');
-
 CREATE TABLE schedules (              -- Unified: recurring (cron) + one-shot reminders (fire_at)
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
@@ -118,22 +100,6 @@ CREATE TABLE schedules (              -- Unified: recurring (cron) + one-shot re
     last_run TEXT,
     fire_at TEXT,                      -- For one-shot reminders: UTC datetime. NULL for recurring.
     fired INTEGER DEFAULT 0,          -- For one-shot: 1 when fired.
-    created_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE conversations (
-    id INTEGER PRIMARY KEY,
-    user_id TEXT UNIQUE NOT NULL,      -- discord user ID or "cli"
-    messages TEXT NOT NULL DEFAULT '[]', -- JSON array of llm.Message
-    last_message_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now'))
-);
-
-CREATE TABLE conversation_summaries (
-    id INTEGER PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    summary TEXT NOT NULL,
-    message_count INTEGER,
     created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -162,22 +128,17 @@ CREATE TABLE watch_results (
 );
 ```
 
-## LLM Tools (19 total)
+## LLM Tools (14 total)
 
-The agent has exactly these tools - no more, no less. Current time is injected into the system prompt, not exposed as a tool.
+The agent has exactly these tools - no more, no less. The agent is stateless: each
+message is a single independent exchange with no persisted conversation history or
+free-text memory. Current time is injected into the system prompt, not exposed as a tool.
 
 ### Thing Tools (4)
 - `list_things` - List things, optionally filtered by status, priority, tag. Items past due date are marked `overdue: true`.
 - `create_thing` - Create a new thing (title required; notes, priority, due_date, tags optional)
 - `update_thing` - Update a thing by id (any field except id and created_at)
 - `complete_thing` - Mark a thing as done
-
-### Memory Tools (5)
-- `save_memory` - Save a timestamped memory (events, decisions, blockers, habits)
-- `search_memories` - Search past memories by text (FTS5), category, tag, thing, or date
-- `list_recent_memories` - List most recent memories
-- `update_memory` - Update a memory by ID (content, category, tags, expires_at)
-- `delete_memory` - Delete a memory by ID
 
 ### Schedule Tools (4)
 - `list_schedules` - List all schedules (recurring + one-shot reminders)
@@ -202,7 +163,7 @@ The agent should:
 - Be helpful but concise - no unnecessary chatter
 - Proactively use tools to check state before answering questions about things
 - Everything is a "thing" — use tags for categorization, status and priority for state
-- Remember context across conversations using memories
+- Be stateless: each message is an independent exchange. There is no persisted conversation history or free-text memory; durable state lives in structured tables (things, schedules, watches)
 - During check-ins: summarize open things, mention overdue items, ask about priorities
 - Not be annoying - check-ins should be useful, not nagging
 - Admit when it doesn't know something rather than making things up
@@ -316,12 +277,13 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] Schedules send prompt directly to agent (no forced check-in context)
 - [x] Timezone-aware reminders (local→UTC conversion via `timezone` note)
 
-### Phase 4: Memory Improvements (PLAN2.md Phase 2)
-- [x] FTS5 full-text search for memories (virtual table, triggers, backfill)
-- [x] Memory management tools (update_memory, delete_memory, resolve_memory)
-- [x] Persistent conversation history (conversations + conversation_summaries tables)
-- [x] Auto-summarization on conversation gaps (>10 min)
-- [x] Scheduler + reminders wired into conversation persistence
+### Phase 4: Memory Improvements (PLAN2.md Phase 2) — REMOVED in Phase 7
+This layer was built and later stripped (see Phase 7). Listed here for history:
+- ~~FTS5 full-text search for memories (virtual table, triggers, backfill)~~
+- ~~Memory management tools (update_memory, delete_memory, resolve_memory)~~
+- ~~Persistent conversation history (conversations + conversation_summaries tables)~~
+- ~~Auto-summarization on conversation gaps (>10 min)~~
+- ~~Scheduler + reminders wired into conversation persistence~~
 
 ### Phase 5: Simplification
 - [x] Removed skills (5 tools, 1 table)
@@ -329,7 +291,7 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] Removed check_ins (dead table)
 - [x] Merged reminders into schedules (3 tools removed)
 - [x] Hid notes from LLM (2 tools removed, table kept for internal config)
-- [ ] Prune old conversation summaries (PruneOldSummaries exists, needs wiring into pruneOldData())
+- [x] ~~Prune old conversation summaries~~ — moot; conversation_summaries removed in Phase 7
 - [ ] Migrate notes table to .env config
 - [ ] Expose timezone updates to LLM (re-add set_note tool or a dedicated set_timezone tool). Currently userLocation() reads from notes table but LLM has no way to write it.
 
@@ -343,6 +305,17 @@ LLM_MODEL=claude-haiku-3-5-20241022 LLM_EVAL_MODEL=claude-sonnet-4-5-20250514 ma
 - [x] Age-based pruning of watch results (180 days, runs daily via scheduler)
 - [x] Context propagation (context.Context through fetch pipeline)
 - [x] Eval cases for watch creation and result querying
+
+### Phase 7: Strip Memory Layer (openspec: strip-memory-layer)
+Reorienting Jot toward a web-primary, structured tool. The agent becomes a thin,
+stateless command surface; everything durable lives in structured tables.
+- [x] Dropped `conversations`, `conversation_summaries`, `memories` tables (+ `memories_fts` + triggers)
+- [x] Migration drops them idempotently for existing DBs (triggers → FTS → base tables, in order)
+- [x] Removed 5 memory LLM tools (19 → 14 tools)
+- [x] Removed `RunWithConversation`/`Summarize`; all callers use stateless `Run`
+- [x] Removed summary pruning and `resolveUserID` from the scheduler
+- [x] Pared the system prompt of memory/summary/continuity language
+- [x] Removed memory eval cases and seeding; KEPT schedules, watches, notes intact
 
 ## Code Style
 

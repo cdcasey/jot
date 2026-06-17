@@ -79,7 +79,7 @@ func runCLI(ag *agent.Agent) {
 			break
 		}
 
-		reply, err := ag.RunWithConversation(ctx, "cli", input)
+		reply, _, err := ag.Run(ctx, nil, input)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		} else {

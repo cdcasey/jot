@@ -42,55 +42,6 @@ var AgentTools = []Tool{
 		}, "id"),
 	},
 	{
-		Name:        "save_memory",
-		Description: "Save a memory for future reference. Use this to remember important context, decisions, blockers, user preferences, or events. Be specific and include temporal context (e.g. 'as of Feb 2026'). Choose the right category. Use category 'habit' to log recurring activity entries like 'gym: done' or 'meditation: skipped'.",
-		Parameters: objReq(map[string]any{
-			"content":    prop("string", "What to remember. Write a clear, specific sentence."),
-			"category":   prop("string", "One of: observation, decision, blocker, preference, event, reflection, habit"),
-			"tags":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Freeform tags for retrieval"},
-			"thing_id":   prop("integer", "Optional thing ID to link to"),
-			"expires_at": prop("string", "Optional expiry datetime (YYYY-MM-DD HH:MM:SS). Omit for permanent memories."),
-		}, "content", "category"),
-	},
-	{
-		Name:        "search_memories",
-		Description: "Search past memories by text, category, tag, or thing. Returns matches ordered by recency. Use this to recall context before answering questions.",
-		Parameters: obj(map[string]any{
-			"query":    prop("string", "Text to search for in memory content"),
-			"category": prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection, habit"),
-			"tag":      prop("string", "Filter by tag"),
-			"thing_id": prop("integer", "Filter by thing ID"),
-			"since":    prop("string", "Only memories after this date (YYYY-MM-DD)"),
-			"limit":    prop("integer", "Max results (default 10)"),
-		}),
-	},
-	{
-		Name:        "list_recent_memories",
-		Description: "List the most recent memories, optionally filtered by category. Use at conversation start or check-ins to re-establish context.",
-		Parameters: obj(map[string]any{
-			"category": prop("string", "Filter by category: observation, decision, blocker, preference, event, reflection, habit"),
-			"limit":    prop("integer", "Max results (default 10)"),
-		}),
-	},
-	{
-		Name:        "update_memory",
-		Description: "Update a memory by ID. Can change content, category, tags, or expires_at. Use this to correct or enrich existing memories.",
-		Parameters: objReq(map[string]any{
-			"id":         prop("integer", "Memory ID to update"),
-			"content":    prop("string", "New content text"),
-			"category":   prop("string", "New category: observation, decision, blocker, preference, event, reflection, habit"),
-			"tags":       map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "New tags"},
-			"expires_at": prop("string", "New expiry datetime (YYYY-MM-DD HH:MM:SS), or empty string to make permanent"),
-		}, "id"),
-	},
-	{
-		Name:        "delete_memory",
-		Description: "Delete a memory by ID. Use when a memory is no longer relevant or was created in error.",
-		Parameters: objReq(map[string]any{
-			"id": prop("integer", "Memory ID to delete"),
-		}, "id"),
-	},
-	{
 		Name:        "list_schedules",
 		Description: "List all schedules, including both recurring (cron) and one-shot reminders.",
 		Parameters:  obj(nil),

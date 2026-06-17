@@ -25,7 +25,6 @@ type EvalCase struct {
 // SeedData populates the in-memory DB before the agent runs.
 type SeedData struct {
 	Things       []SeedThing       `json:"things,omitempty"`
-	Memories     []SeedMemory      `json:"memories,omitempty"`
 	Notes        map[string]string `json:"notes,omitempty"`
 	Watches      []SeedWatch       `json:"watches,omitempty"`
 	WatchResults []SeedWatchResult `json:"watch_results,omitempty"`
@@ -37,12 +36,6 @@ type SeedThing struct {
 	Status   string   `json:"status,omitempty"`
 	Priority string   `json:"priority,omitempty"`
 	DueDate  string   `json:"due_date,omitempty"`
-	Tags     []string `json:"tags,omitempty"`
-}
-
-type SeedMemory struct {
-	Content  string   `json:"content"`
-	Category string   `json:"category"`
 	Tags     []string `json:"tags,omitempty"`
 }
 
@@ -199,12 +192,6 @@ func seedDB(t *testing.T, database *db.DB, seed SeedData) {
 		_, err := database.CreateThing(thing.Title, thing.Notes, thing.Priority, thing.DueDate, thing.Tags)
 		if err != nil {
 			t.Fatalf("seeding thing %q: %v", thing.Title, err)
-		}
-	}
-	for _, mem := range seed.Memories {
-		_, err := database.SaveMemory(mem.Content, mem.Category, "eval", mem.Tags, nil, "")
-		if err != nil {
-			t.Fatalf("seeding memory: %v", err)
 		}
 	}
 	for key, value := range seed.Notes {
