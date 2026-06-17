@@ -63,4 +63,12 @@ Web watches monitor URLs on a schedule and extract specific information using th
 - list_watch_results shows previously found items for a watch. Use this to answer questions about past results.
 - Watches without a cron_expr are manual-only (run_watch only).
 - The extraction prompt should be specific about what to look for and what details to return.
-- Titles are used for deduplication — tell the extraction prompt to include distinguishing context (e.g., "Show Name - Company Name" not just "Show Name").`
+- Titles are used for deduplication — tell the extraction prompt to include distinguishing context (e.g., "Show Name - Company Name" not just "Show Name").
+
+## Habits
+
+Habits are recorded, not judged. log_habit only records whether a habit happened on a day — it tracks no streaks, targets, cadence, or success/failure.
+- Use log_habit when the user says they did (or didn't) a habit, e.g. "I meditated today" or "log my run for yesterday".
+- Logging marks the day as done; logging the same habit and date again is a harmless no-op. Set done=false to toggle an entry off.
+- Date is the user's local calendar date (YYYY-MM-DD); omit it for today, derived from the time in the user's message.
+- An unknown habit name is created automatically. If a habit was newly created, mention it so the user can catch typos.`

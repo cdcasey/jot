@@ -27,7 +27,13 @@
       "Bash(python3 -c \"import sys,json;d=json.load\\(sys.stdin\\);print\\('schema:',d['schemaName']\\);print\\('mode:',d['actionContext']['mode']\\);print\\('changeRoot:',d['changeRoot']\\);print\\('changesDir:',d['planningHome']['changesDir']\\);print\\('artifacts:',[\\(a['id'],a['status']\\) for a in d['artifacts']]\\);print\\('specs existing:',d['artifactPaths']['specs']['existingOutputPaths']\\)\")",
       "Bash(openspec validate *)",
       "Bash(openspec list *)",
-      "Bash(grep -v '^openspec/changes/archive$')"
+      "Bash(grep -v '^openspec/changes/archive$')",
+      "Bash(openspec new *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('applyRequires:', d['applyRequires']\\); [print\\(a['id'], a['status']\\) for a in d['artifacts']]\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('schema:', d['schemaName']\\); print\\('mode:', d['actionContext']['mode']\\); print\\('editRoots:', d['actionContext']['allowedEditRoots']\\)\")",
+      "Bash(python3 *)",
+      "Bash(echo \"vet-exit:$?\")",
+      "Bash(perl -0pi -e 's/- \\\\[ \\\\] \\(2\\\\.[1-6]|3\\\\.[1-4]|4\\\\.[1-3]|5\\\\.[12]\\)/- [x] $1/g' openspec/changes/add-habit-tracking/tasks.md)"
     ]
   },
   "outputStyle": "Explanatory"

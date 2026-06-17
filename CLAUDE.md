@@ -42,6 +42,7 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
     queries_notes.go         # Notes queries (internal config only, not exposed as LLM tools)
     queries_schedule.go      # Schedules + one-shot reminders queries
     queries_watches.go       # Watch + watch result queries
+    queries_habits.go        # Habits + habit log queries (record-only)
 /internal/llm/
     client.go                # LLMClient interface
     provider.go              # Provider factory (NewClient)
@@ -126,9 +127,24 @@ CREATE TABLE watch_results (
     notified INTEGER DEFAULT 0,       -- 0=new, 1=delivered
     UNIQUE(watch_id, content_hash)
 );
+
+CREATE TABLE habits (                 -- Habit definitions (record-only; no streaks/targets/cadence)
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE habit_logs (             -- One row = habit was done that local calendar day
+    id INTEGER PRIMARY KEY,
+    habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,                -- local calendar date YYYY-MM-DD
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(habit_id, date)            -- structural guarantee: one entry per habit per day
+);
 ```
 
-## LLM Tools (14 total)
+## LLM Tools (15 total)
 
 The agent has exactly these tools - no more, no less. The agent is stateless: each
 message is a single independent exchange with no persisted conversation history or
@@ -153,6 +169,9 @@ free-text memory. Current time is injected into the system prompt, not exposed a
 - `delete_watch` - Delete a watch by name (cascades to results)
 - `run_watch` - Manually trigger a watch to fetch URLs and extract items now
 - `list_watch_results` - List stored results for a watch (optionally unnotified only)
+
+### Habit Tools (1)
+- `log_habit` - Record whether a habit happened on a local calendar date. Logging marks the day done; re-logging the same habit+date is a harmless no-op (guaranteed by `UNIQUE(habit_id, date)`). `done=false` toggles the entry off. Unknown habit names are auto-created (`active=1`). Record-only: no streaks, targets, cadence, or success/failure. Date defaults to the user's current local date via `userLocation()`.
 
 ### Context (injected, not a tool)
 - Current time and timezone are embedded in the system prompt on each request

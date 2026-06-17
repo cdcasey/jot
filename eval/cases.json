@@ -1,284 +1,463 @@
 [
-	{
-		"name": "time_from_context",
-		"category": "context_integration",
-		"prompt": "What time is it?",
-		"seed": {},
-		"assert": {
-			"tool_not_called": ["get_time"],
-			"rubric": "The current time is automatically injected into the user message by the system. The assistant should use that injected time to answer. It should NOT call any tools. Providing a specific time is correct behavior, not hallucination."
-		}
-	},
-	{
-		"name": "tool_create_reminder",
-		"category": "tool_reliability",
-		"prompt": "Remind me to call the dentist tomorrow at 2pm",
-		"seed": {
-			"notes": {
-				"timezone": "America/New_York"
-			}
-		},
-		"assert": {
-			"tool_called": ["create_schedule"],
-			"tool_not_called": ["create_thing"]
-		}
-	},
-	{
-		"name": "tool_list_things",
-		"category": "tool_reliability",
-		"prompt": "What's on my plate?",
-		"seed": {
-			"things": [
-				{
-					"title": "Finish quarterly report",
-					"priority": "high",
-					"status": "active",
-					"tags": ["work"]
-				},
-				{
-					"title": "Buy groceries",
-					"priority": "normal",
-					"status": "open",
-					"tags": ["errands"]
-				},
-				{
-					"title": "Review PR #42",
-					"priority": "high",
-					"status": "open",
-					"tags": ["work"]
-				},
-				{
-					"title": "Schedule dentist",
-					"priority": "low",
-					"status": "open",
-					"tags": ["health"]
-				},
-				{
-					"title": "Ship v2.0 release",
-					"priority": "urgent",
-					"status": "active",
-					"tags": ["work"]
-				},
-				{
-					"title": "Plan weekend hike",
-					"priority": "low",
-					"status": "open",
-					"tags": ["personal"]
-				}
-			]
-		},
-		"assert": {
-			"tool_called": ["list_things"]
-		}
-	},
-	{
-		"name": "context_topic_clusters",
-		"category": "context_integration",
-		"prompt": "What topics have I been thinking about most?",
-		"seed": {
-			"things": [
-				{ "title": "Learn React hooks", "tags": ["coding"], "status": "open" },
-				{
-					"title": "Build portfolio site",
-					"tags": ["coding"],
-					"status": "open"
-				},
-				{
-					"title": "Read DDIA chapter 5",
-					"tags": ["coding", "reading"],
-					"status": "open"
-				},
-				{
-					"title": "Refactor auth module",
-					"tags": ["coding"],
-					"status": "active"
-				},
-				{ "title": "Meal prep Sunday", "tags": ["health"], "status": "open" },
-				{
-					"title": "Try new gym routine",
-					"tags": ["health"],
-					"status": "open"
-				},
-				{
-					"title": "Book dentist appointment",
-					"tags": ["health"],
-					"status": "open"
-				},
-				{
-					"title": "Research protein supplements",
-					"tags": ["health"],
-					"status": "open"
-				},
-				{
-					"title": "Plan weekend trip",
-					"tags": ["personal"],
-					"status": "open"
-				},
-				{ "title": "Call mom", "tags": ["personal"], "status": "open" },
-				{ "title": "Fix kitchen faucet", "tags": ["home"], "status": "open" },
-				{
-					"title": "Research standing desks",
-					"tags": ["home", "health"],
-					"status": "open"
-				}
-			]
-		},
-		"assert": {
-			"tool_called": ["list_things"],
-			"rubric": "Should identify that coding (4 items) and health (4-5 items) are the dominant themes. Should synthesize clusters, not just list all 12 items verbatim. A good response groups items and notes relative weight."
-		}
-	},
-	{
-		"name": "context_prioritization",
-		"category": "context_integration",
-		"prompt": "What should I focus on today?",
-		"seed": {
-			"things": [
-				{
-					"title": "Ship v2.0 release",
-					"priority": "urgent",
-					"status": "active",
-					"due_date": "2026-03-04",
-					"tags": ["work"]
-				},
-				{
-					"title": "Write blog post",
-					"priority": "normal",
-					"status": "open",
-					"due_date": "2026-03-10",
-					"tags": ["writing"]
-				},
-				{
-					"title": "Fix CI pipeline",
-					"priority": "high",
-					"status": "open",
-					"tags": ["work"]
-				},
-				{
-					"title": "Organize desk",
-					"priority": "low",
-					"status": "open",
-					"tags": ["home"]
-				},
-				{
-					"title": "Respond to client email",
-					"priority": "high",
-					"status": "open",
-					"due_date": "2026-03-04",
-					"tags": ["work"]
-				},
-				{
-					"title": "Read chapter 3",
-					"priority": "low",
-					"status": "open",
-					"tags": ["learning"]
-				},
-				{
-					"title": "Submit expense report",
-					"priority": "normal",
-					"status": "open",
-					"due_date": "2026-03-05",
-					"tags": ["work"]
-				}
-			]
-		},
-		"assert": {
-			"tool_called": ["list_things"],
-			"rubric": "Should prioritize the urgent/due-today items (Ship v2.0, Respond to client email) over low-priority items. Should reason about urgency vs importance, not just sort by date or list everything equally. Should suggest a realistic focus for the day."
-		}
-	},
-	{
-		"name": "reasoning_tradeoffs",
-		"category": "reasoning",
-		"prompt": "I want to start exercising, learn guitar, and read more, but I only have an hour of free time per day.",
-		"seed": {},
-		"assert": {
-			"rubric": "Should engage with the tradeoff meaningfully. Should NOT just say 'try all three for 20 minutes each' or give generic productivity advice. Should ask about priorities, suggest picking one or two to start, or discuss the realistic constraints. Should treat the user as an adult making a real decision."
-		}
-	},
-	{
-		"name": "reasoning_patterns",
-		"category": "reasoning",
-		"prompt": "I keep adding ideas but never finishing projects. What's going on?",
-		"seed": {
-			"things": [
-				{
-					"title": "Build a CLI todo app",
-					"status": "open",
-					"tags": ["project"]
-				},
-				{ "title": "Learn Rust", "status": "open", "tags": ["learning"] },
-				{
-					"title": "Start a newsletter",
-					"status": "open",
-					"tags": ["project"]
-				},
-				{
-					"title": "Redesign personal site",
-					"status": "open",
-					"tags": ["project"]
-				},
-				{
-					"title": "Build a budgeting tool",
-					"status": "dropped",
-					"tags": ["project"]
-				},
-				{ "title": "Learn piano", "status": "dropped", "tags": ["learning"] },
-				{
-					"title": "Write a short story",
-					"status": "dropped",
-					"tags": ["project"]
-				},
-				{ "title": "Automate home lab", "status": "open", "tags": ["project"] }
-			]
-		},
-		"assert": {
-			"tool_called": ["list_things"],
-			"rubric": "Should notice the pattern in the data (many open/dropped projects, nothing done). Should push back or ask probing questions rather than giving generic advice like 'try breaking tasks into smaller pieces.' Should engage with WHY this might be happening — novelty bias, fear of finishing, unclear goals, etc."
-		}
-	},
-	{
-		"name": "tool_create_watch",
-		"category": "context_integration",
-		"prompt": "Watch https://austintheatre.org/auditions for auditions and let me know about anything new once a week",
-		"seed": {},
-		"assert": {
-			"tool_called": ["create_watch"],
-			"tool_not_called": ["create_thing", "create_schedule"],
-			"rubric": "Should call create_watch with a reasonable name, the given URL, and a weekly cron expression. The extraction prompt should be specific — mentioning what details to extract from audition listings (e.g., show name, dates, company, requirements), not just 'extract auditions'. Should NOT create a separate schedule or thing."
-		}
-	},
-	{
-		"name": "tool_list_watch_results",
-		"category": "tool_reliability",
-		"prompt": "What has my auditions watch found so far?",
-		"seed": {
-			"watches": [
-				{
-					"name": "auditions",
-					"prompt": "Extract audition listings with show name, company, dates, and requirements",
-					"urls": ["https://austintheatre.org/auditions"],
-					"cron_expr": "0 9 * * 1"
-				}
-			],
-			"watch_results": [
-				{
-					"watch_name": "auditions",
-					"title": "Hamlet - Austin Playhouse",
-					"body": "Open auditions March 15, callbacks March 17. Seeking male-presenting actors 25-45.",
-					"source_url": "https://austintheatre.org/auditions"
-				},
-				{
-					"watch_name": "auditions",
-					"title": "Macbeth - City Theatre",
-					"body": "By appointment only. April 1-3. All roles open.",
-					"source_url": "https://austintheatre.org/auditions"
-				}
-			]
-		},
-		"assert": {
-			"tool_called": ["list_watch_results"],
-			"tool_not_called": ["run_watch"]
-		}
-	}
+  {
+    "name": "time_from_context",
+    "category": "context_integration",
+    "prompt": "What time is it?",
+    "seed": {},
+    "assert": {
+      "tool_not_called": [
+        "get_time"
+      ],
+      "rubric": "The current time is automatically injected into the user message by the system. The assistant should use that injected time to answer. It should NOT call any tools. Providing a specific time is correct behavior, not hallucination."
+    }
+  },
+  {
+    "name": "tool_create_reminder",
+    "category": "tool_reliability",
+    "prompt": "Remind me to call the dentist tomorrow at 2pm",
+    "seed": {
+      "notes": {
+        "timezone": "America/New_York"
+      }
+    },
+    "assert": {
+      "tool_called": [
+        "create_schedule"
+      ],
+      "tool_not_called": [
+        "create_thing"
+      ]
+    }
+  },
+  {
+    "name": "tool_list_things",
+    "category": "tool_reliability",
+    "prompt": "What's on my plate?",
+    "seed": {
+      "things": [
+        {
+          "title": "Finish quarterly report",
+          "priority": "high",
+          "status": "active",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "title": "Buy groceries",
+          "priority": "normal",
+          "status": "open",
+          "tags": [
+            "errands"
+          ]
+        },
+        {
+          "title": "Review PR #42",
+          "priority": "high",
+          "status": "open",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "title": "Schedule dentist",
+          "priority": "low",
+          "status": "open",
+          "tags": [
+            "health"
+          ]
+        },
+        {
+          "title": "Ship v2.0 release",
+          "priority": "urgent",
+          "status": "active",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "title": "Plan weekend hike",
+          "priority": "low",
+          "status": "open",
+          "tags": [
+            "personal"
+          ]
+        }
+      ]
+    },
+    "assert": {
+      "tool_called": [
+        "list_things"
+      ]
+    }
+  },
+  {
+    "name": "context_topic_clusters",
+    "category": "context_integration",
+    "prompt": "What topics have I been thinking about most?",
+    "seed": {
+      "things": [
+        {
+          "title": "Learn React hooks",
+          "tags": [
+            "coding"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Build portfolio site",
+          "tags": [
+            "coding"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Read DDIA chapter 5",
+          "tags": [
+            "coding",
+            "reading"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Refactor auth module",
+          "tags": [
+            "coding"
+          ],
+          "status": "active"
+        },
+        {
+          "title": "Meal prep Sunday",
+          "tags": [
+            "health"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Try new gym routine",
+          "tags": [
+            "health"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Book dentist appointment",
+          "tags": [
+            "health"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Research protein supplements",
+          "tags": [
+            "health"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Plan weekend trip",
+          "tags": [
+            "personal"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Call mom",
+          "tags": [
+            "personal"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Fix kitchen faucet",
+          "tags": [
+            "home"
+          ],
+          "status": "open"
+        },
+        {
+          "title": "Research standing desks",
+          "tags": [
+            "home",
+            "health"
+          ],
+          "status": "open"
+        }
+      ]
+    },
+    "assert": {
+      "tool_called": [
+        "list_things"
+      ],
+      "rubric": "Should identify that coding (4 items) and health (4-5 items) are the dominant themes. Should synthesize clusters, not just list all 12 items verbatim. A good response groups items and notes relative weight."
+    }
+  },
+  {
+    "name": "context_prioritization",
+    "category": "context_integration",
+    "prompt": "What should I focus on today?",
+    "seed": {
+      "things": [
+        {
+          "title": "Ship v2.0 release",
+          "priority": "urgent",
+          "status": "active",
+          "due_date": "2026-03-04",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "title": "Write blog post",
+          "priority": "normal",
+          "status": "open",
+          "due_date": "2026-03-10",
+          "tags": [
+            "writing"
+          ]
+        },
+        {
+          "title": "Fix CI pipeline",
+          "priority": "high",
+          "status": "open",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "title": "Organize desk",
+          "priority": "low",
+          "status": "open",
+          "tags": [
+            "home"
+          ]
+        },
+        {
+          "title": "Respond to client email",
+          "priority": "high",
+          "status": "open",
+          "due_date": "2026-03-04",
+          "tags": [
+            "work"
+          ]
+        },
+        {
+          "title": "Read chapter 3",
+          "priority": "low",
+          "status": "open",
+          "tags": [
+            "learning"
+          ]
+        },
+        {
+          "title": "Submit expense report",
+          "priority": "normal",
+          "status": "open",
+          "due_date": "2026-03-05",
+          "tags": [
+            "work"
+          ]
+        }
+      ]
+    },
+    "assert": {
+      "tool_called": [
+        "list_things"
+      ],
+      "rubric": "Should prioritize the urgent/due-today items (Ship v2.0, Respond to client email) over low-priority items. Should reason about urgency vs importance, not just sort by date or list everything equally. Should suggest a realistic focus for the day."
+    }
+  },
+  {
+    "name": "reasoning_tradeoffs",
+    "category": "reasoning",
+    "prompt": "I want to start exercising, learn guitar, and read more, but I only have an hour of free time per day.",
+    "seed": {},
+    "assert": {
+      "rubric": "Should engage with the tradeoff meaningfully. Should NOT just say 'try all three for 20 minutes each' or give generic productivity advice. Should ask about priorities, suggest picking one or two to start, or discuss the realistic constraints. Should treat the user as an adult making a real decision."
+    }
+  },
+  {
+    "name": "reasoning_patterns",
+    "category": "reasoning",
+    "prompt": "I keep adding ideas but never finishing projects. What's going on?",
+    "seed": {
+      "things": [
+        {
+          "title": "Build a CLI todo app",
+          "status": "open",
+          "tags": [
+            "project"
+          ]
+        },
+        {
+          "title": "Learn Rust",
+          "status": "open",
+          "tags": [
+            "learning"
+          ]
+        },
+        {
+          "title": "Start a newsletter",
+          "status": "open",
+          "tags": [
+            "project"
+          ]
+        },
+        {
+          "title": "Redesign personal site",
+          "status": "open",
+          "tags": [
+            "project"
+          ]
+        },
+        {
+          "title": "Build a budgeting tool",
+          "status": "dropped",
+          "tags": [
+            "project"
+          ]
+        },
+        {
+          "title": "Learn piano",
+          "status": "dropped",
+          "tags": [
+            "learning"
+          ]
+        },
+        {
+          "title": "Write a short story",
+          "status": "dropped",
+          "tags": [
+            "project"
+          ]
+        },
+        {
+          "title": "Automate home lab",
+          "status": "open",
+          "tags": [
+            "project"
+          ]
+        }
+      ]
+    },
+    "assert": {
+      "tool_called": [
+        "list_things"
+      ],
+      "rubric": "Should notice the pattern in the data (many open/dropped projects, nothing done). Should push back or ask probing questions rather than giving generic advice like 'try breaking tasks into smaller pieces.' Should engage with WHY this might be happening \u2014 novelty bias, fear of finishing, unclear goals, etc."
+    }
+  },
+  {
+    "name": "tool_create_watch",
+    "category": "context_integration",
+    "prompt": "Watch https://austintheatre.org/auditions for auditions and let me know about anything new once a week",
+    "seed": {},
+    "assert": {
+      "tool_called": [
+        "create_watch"
+      ],
+      "tool_not_called": [
+        "create_thing",
+        "create_schedule"
+      ],
+      "rubric": "Should call create_watch with a reasonable name, the given URL, and a weekly cron expression. The extraction prompt should be specific \u2014 mentioning what details to extract from audition listings (e.g., show name, dates, company, requirements), not just 'extract auditions'. Should NOT create a separate schedule or thing."
+    }
+  },
+  {
+    "name": "tool_list_watch_results",
+    "category": "tool_reliability",
+    "prompt": "What has my auditions watch found so far?",
+    "seed": {
+      "watches": [
+        {
+          "name": "auditions",
+          "prompt": "Extract audition listings with show name, company, dates, and requirements",
+          "urls": [
+            "https://austintheatre.org/auditions"
+          ],
+          "cron_expr": "0 9 * * 1"
+        }
+      ],
+      "watch_results": [
+        {
+          "watch_name": "auditions",
+          "title": "Hamlet - Austin Playhouse",
+          "body": "Open auditions March 15, callbacks March 17. Seeking male-presenting actors 25-45.",
+          "source_url": "https://austintheatre.org/auditions"
+        },
+        {
+          "watch_name": "auditions",
+          "title": "Macbeth - City Theatre",
+          "body": "By appointment only. April 1-3. All roles open.",
+          "source_url": "https://austintheatre.org/auditions"
+        }
+      ]
+    },
+    "assert": {
+      "tool_called": [
+        "list_watch_results"
+      ],
+      "tool_not_called": [
+        "run_watch"
+      ]
+    }
+  },
+  {
+    "name": "tool_log_habit_new",
+    "category": "tool_reliability",
+    "prompt": "I meditated today",
+    "seed": {
+      "notes": {
+        "timezone": "America/Chicago"
+      }
+    },
+    "assert": {
+      "tool_called": [
+        "log_habit"
+      ],
+      "tool_not_called": [
+        "create_thing"
+      ],
+      "rubric": "The user reported doing a habit. The assistant should call log_habit (creating the habit automatically since it is new), not create_thing. It records only \u2014 it should not invent streaks, targets, or success judgments."
+    }
+  },
+  {
+    "name": "tool_log_habit_toggle_off",
+    "category": "tool_reliability",
+    "prompt": "Actually I didn't run yesterday, remove that",
+    "seed": {
+      "notes": {
+        "timezone": "America/Chicago"
+      }
+    },
+    "assert": {
+      "tool_called": [
+        "log_habit"
+      ],
+      "tool_not_called": [
+        "create_thing"
+      ],
+      "rubric": "The user wants to remove a habit entry for a past day. The assistant should call log_habit with done=false (toggle off) for the run habit and yesterday's date. It should not create a thing."
+    }
+  },
+  {
+    "name": "tool_log_habit_not_thing",
+    "category": "tool_reliability",
+    "prompt": "Log that I flossed",
+    "seed": {
+      "notes": {
+        "timezone": "America/Chicago"
+      }
+    },
+    "assert": {
+      "tool_called": [
+        "log_habit"
+      ],
+      "tool_not_called": [
+        "create_thing",
+        "create_schedule"
+      ],
+      "rubric": "Logging a recurring personal habit ('flossed') should use log_habit, not be tracked as a thing or a schedule."
+    }
+  }
 ]

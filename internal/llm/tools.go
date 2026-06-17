@@ -122,6 +122,15 @@ var AgentTools = []Tool{
 			"limit":           prop("integer", "Max results to return (default 50)"),
 		}, "name"),
 	},
+	{
+		Name:        "log_habit",
+		Description: "Record whether a habit was done on a day. Logging marks the day as done; the same habit+date logged again is a harmless no-op. Set done=false to toggle the entry off (mark as not done). If the habit name is new, it is created automatically. This only records — it does not judge streaks, targets, or success.",
+		Parameters: objReq(map[string]any{
+			"name": prop("string", "Habit name, e.g. 'meditate' or 'run'. Created automatically if unknown."),
+			"date": prop("string", "Local calendar date in YYYY-MM-DD. Omit for today."),
+			"done": prop("boolean", "true (default) records the habit as done; false toggles the entry off."),
+		}, "name"),
+	},
 }
 
 // Helper functions for building JSON Schema objects.

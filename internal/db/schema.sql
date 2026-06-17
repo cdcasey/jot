@@ -53,3 +53,18 @@ CREATE TABLE IF NOT EXISTS watch_results (
     notified INTEGER DEFAULT 0,
     UNIQUE(watch_id, content_hash)
 );
+
+CREATE TABLE IF NOT EXISTS habits (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS habit_logs (
+    id INTEGER PRIMARY KEY,
+    habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,                -- local calendar date YYYY-MM-DD
+    created_at TEXT DEFAULT (datetime('now')),
+    UNIQUE(habit_id, date)
+);
