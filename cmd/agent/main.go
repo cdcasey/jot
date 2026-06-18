@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -17,6 +18,7 @@ import (
 	"github.com/chris/jot/internal/llm"
 	"github.com/chris/jot/internal/scheduler"
 	"github.com/chris/jot/internal/watch"
+	"github.com/chris/jot/internal/web"
 )
 
 func main() {
@@ -45,6 +47,10 @@ func main() {
 	wr := watch.NewRunner(database, client)
 	ag.SetWatchRunner(wr)
 
+	// Embedded web UI: started only when WEB_PORT is set, sharing the DB handle.
+	// Runs in both CLI and bot modes.
+	startWebServer(cfg, database)
+
 	// If Discord token is set, run as bot
 	if cfg.DiscordToken != "" {
 		runBot(cfg, database, ag, wr)
@@ -53,6 +59,29 @@ func main() {
 
 	// Otherwise, CLI mode
 	runCLI(ag)
+}
+
+// startWebServer launches the embedded web UI in a background goroutine when
+// WEB_ADDR or WEB_PORT is set. WEB_ADDR is the bind host (e.g. a Tailscale IP);
+// WEB_PORT is the port. An omitted address defaults to loopback (127.0.0.1) and
+// an omitted port defaults to 8080. There is no application-level auth; access
+// control is delegated to the network layer (e.g. Tailscale ACLs), so binding to
+// a tailnet interface restricts reach to your tailnet.
+func startWebServer(cfg *config.Config, database *db.DB) {
+	if !cfg.WebEnabled() {
+		return
+	}
+	srv, err := web.New(database)
+	if err != nil {
+		log.Fatalf("failed to init web server: %v", err)
+	}
+	addr := cfg.WebBindAddr()
+	go func() {
+		log.Printf("web UI listening on http://%s", addr)
+		if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
+			log.Printf("web server stopped: %v", err)
+		}
+	}()
 }
 
 func runCLI(ag *agent.Agent) {

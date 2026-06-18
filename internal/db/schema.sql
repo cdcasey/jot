@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS things (
     due_date TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    completed_at TEXT
+    completed_at TEXT,
+    position INTEGER NOT NULL DEFAULT 0   -- manual sort order within a status column (kanban)
 );
 
 CREATE TABLE IF NOT EXISTS notes (

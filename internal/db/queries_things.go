@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -39,9 +40,15 @@ func (d *DB) CreateThing(title, notes, priority, dueDate string, tags []string) 
 		b, _ := json.Marshal(tags)
 		tagsJSON = string(b)
 	}
+	// New things default to status 'open'; place them at the bottom of that
+	// column so the kanban order is deterministic instead of every card tying at 0.
+	var maxPos sql.NullInt64
+	if err := d.conn.QueryRow("SELECT MAX(position) FROM things WHERE status = 'open'").Scan(&maxPos); err != nil {
+		return 0, fmt.Errorf("reading max open position: %w", err)
+	}
 	res, err := d.conn.Exec(
-		"INSERT INTO things (title, notes, priority, due_date, tags) VALUES (?, ?, ?, ?, ?)",
-		title, nullStr(notes), priority, nullStr(dueDate), nullStr(tagsJSON),
+		"INSERT INTO things (title, notes, priority, due_date, tags, position) VALUES (?, ?, ?, ?, ?, ?)",
+		title, nullStr(notes), priority, nullStr(dueDate), nullStr(tagsJSON), maxPos.Int64+positionStep,
 	)
 	if err != nil {
 		return 0, fmt.Errorf("creating thing: %w", err)

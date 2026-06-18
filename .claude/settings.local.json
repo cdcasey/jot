@@ -33,7 +33,22 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('schema:', d['schemaName']\\); print\\('mode:', d['actionContext']['mode']\\); print\\('editRoots:', d['actionContext']['allowedEditRoots']\\)\")",
       "Bash(python3 *)",
       "Bash(echo \"vet-exit:$?\")",
-      "Bash(perl -0pi -e 's/- \\\\[ \\\\] \\(2\\\\.[1-6]|3\\\\.[1-4]|4\\\\.[1-3]|5\\\\.[12]\\)/- [x] $1/g' openspec/changes/add-habit-tracking/tasks.md)"
+      "Bash(perl -0pi -e 's/- \\\\[ \\\\] \\(2\\\\.[1-6]|3\\\\.[1-4]|4\\\\.[1-3]|5\\\\.[12]\\)/- [x] $1/g' openspec/changes/add-habit-tracking/tasks.md)",
+      "Bash(openspec --version)",
+      "Read(//private/tmp/**)",
+      "Bash(rm -f jot_smoke.db)",
+      "Bash(DATABASE_PATH=/tmp/jot_smoke.db /tmp/jot_agent)",
+      "Bash(date -v-1d +%F)",
+      "Bash(date -v-2d +%F)",
+      "Bash(echo \"today=$\\(date +%F\\)  -1d=$\\(date -v-1d +%F\\)  -2d=$\\(date -v-2d +%F\\)\")",
+      "Bash(curl -s http://127.0.0.1:18080/habits)",
+      "Bash(curl -s -o /dev/null -w 'reorder HTTP: %{http_code}\\\\n' -X POST http://127.0.0.1:18080/things/move --data 'id=__TRACKED_VAR__&status=open&after_id=__TRACKED_VAR__&before_id=__TRACKED_VAR__')",
+      "Bash(pkill -f jot_agent)",
+      "Bash(rm -f /tmp/jot_smoke.db /tmp/jot_smoke.db-wal /tmp/jot_smoke.db-shm /tmp/jot_agent /tmp/jot_web*.log)",
+      "Bash(lsof -iTCP:18080 -sTCP:LISTEN)",
+      "Bash(openspec spec *)",
+      "Bash(git mv *)",
+      "Bash(lsof -nP -iTCP -sTCP:LISTEN)"
     ]
   },
   "outputStyle": "Explanatory"

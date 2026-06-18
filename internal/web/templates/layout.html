@@ -1,0 +1,21 @@
+{{define "layout"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jot — {{.Title}}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/sortable.min.js" defer></script>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/" class="brand">Jot</a>
+    <a href="/">Board</a>
+    <a href="/habits">Habits</a>
+  </nav>
+  <main>
+    {{template "content" .}}
+  </main>
+</body>
+</html>{{end}}
