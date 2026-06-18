@@ -61,16 +61,62 @@ Set `DISCORD_BOT_TOKEN` in `.env`, then run:
 ./jot
 ```
 
-The bot responds to DMs and @mentions. Conversation history is maintained per channel.
+The bot responds to DMs and @mentions. Each message is an independent exchange —
+the agent is stateless and keeps no conversation history; durable state lives in
+the SQLite tables (things, schedules, watches, habits).
+
+### Web UI
+
+Jot ships with an embedded web interface — a kanban board for your things and a
+calendar grid for your habits. It's served from the same binary and reads/writes
+the same `data.db`; there's no separate service, no Node, and no build step.
+
+Set `WEB_PORT` and run as usual:
+
+```bash
+# .env
+WEB_PORT=8080
+```
+
+```bash
+./jot
+# web UI listening on http://127.0.0.1:8080
+```
+
+The web server starts alongside the CLI or Discord bot whenever `WEB_PORT` is
+set, and is skipped entirely when it isn't. Open the URL in a browser:
+
+- **Board** (`/`) — a three-column kanban over your things: **Ideas** (`open`),
+  **Active** (`active`), and **Done** (`done`). Archived (`dropped`) things are
+  off the board. Drag a card to reorder it within a column or move it to another;
+  the new position is saved, and dropping a card into **Done** stamps its
+  completion time (dragging back out clears it).
+- **Habits** (`/habits`) — a read-only calendar grid covering the last 30 days.
+  A cell is filled on each day a habit was logged. Logging still happens through
+  the agent (e.g. "log meditation" via CLI or Discord); the grid is for looking,
+  not editing.
+
+#### Exposure
+
+`WEB_PORT` accepts either form:
+
+| Value | Binds to | Use for |
+|-------|----------|---------|
+| `8080` (bare port) | `127.0.0.1:8080` (loopback only) | local access |
+| `100.x.y.z:8080` (host:port) | that interface | remote access (e.g. Tailscale) |
+
+There is **no application-level login** — access control is delegated to the
+network layer. Bind to loopback or a Tailscale interface and rely on Tailscale
+ACLs; do not bind to a public interface without putting protection in front of it.
 
 ## What it can do
 
 - **Things** — track anything with status, priority, tags, and due dates
-- **Memories** — contextual memory with full-text search (FTS5), categories, tags, and optional expiry
 - **Schedules** — recurring tasks via cron (e.g., daily check-ins, weekly reviews). Agent-manageable.
 - **Reminders** — one-shot notifications via schedules ("remind me at 3pm"). Timezone-aware.
 - **Watches** — monitor web pages on a schedule, extract structured info via LLM, notify on new items
-- **Summaries** — overview of open things, overdue items, recent activity
+- **Habits** — record whether a habit happened on a given day (record-only; no streaks or targets)
+- **Web UI** — kanban board for things and a calendar grid for habits, served from the same binary (`WEB_PORT`)
 
 ## Scheduling
 
