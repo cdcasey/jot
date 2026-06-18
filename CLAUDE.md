@@ -226,9 +226,11 @@ DISCORD_USER_ID=...
 DATABASE_PATH=./data.db        # SQLite file location
 CHECK_IN_CRON="0 9 * * *"      # Daily at 9am (optional)
 MAX_CONTEXT_TOKENS=180000      # Token budget for LLM context (default: 180000)
-WEB_PORT=8080                  # Optional: enable embedded web UI. Bare port binds
-                               #   loopback only; "host:port" exposes that interface
-                               #   (e.g. Tailscale). No app-level auth — use network ACLs.
+WEB_ADDR=127.0.0.1             # Optional: bind host for the web UI (e.g. a Tailscale
+                               #   IP). Defaults to 127.0.0.1 (loopback) when omitted.
+WEB_PORT=8080                  # Optional: port for the web UI. Defaults to 8080.
+                               # The web UI starts if EITHER WEB_ADDR or WEB_PORT is set;
+                               #   unset both to disable. No app-level auth — use network ACLs.
 
 # Eval-specific (optional, fall back to active_model from YAML)
 LLM_EVAL_PROVIDER=anthropic

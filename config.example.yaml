@@ -30,7 +30,8 @@ models:
 
 active_model: anthropic-sonnet
 
-# App settings (Discord tokens, DATABASE_PATH, WEB_PORT, etc.) live in .env,
-# not here. Set WEB_PORT to enable the embedded web UI — a bare port like
-# "8080" binds loopback only; "100.x.y.z:8080" exposes a specific (e.g.
-# Tailscale) interface. There is no app-level auth; use network ACLs.
+# App settings (Discord tokens, DATABASE_PATH, WEB_ADDR/WEB_PORT, etc.) live in
+# .env, not here. The embedded web UI starts when WEB_ADDR or WEB_PORT is set:
+# WEB_ADDR is the bind host (defaults to 127.0.0.1 / loopback), WEB_PORT is the
+# port (defaults to 8080). For Tailscale, set WEB_ADDR to the node's tailnet IP.
+# There is no app-level auth; use network ACLs.

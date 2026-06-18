@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 
@@ -43,7 +44,40 @@ type Config struct {
 	DatabasePath     string
 	CheckInCron      string
 	MaxContextTokens int
-	WebPort          string // when set, the embedded web UI listens on this port
+
+	// Web UI. The server starts when either WebAddr or WebPort is set (see
+	// WebBindAddr). WebAddr is the bind host (e.g. a Tailscale IP); WebPort is
+	// the port. Neither set means the web UI is off.
+	WebAddr string
+	WebPort string
+}
+
+// Default web bind values used when only one of WebAddr/WebPort is provided.
+const (
+	defaultWebAddr = "127.0.0.1" // loopback-only unless an explicit address is given
+	defaultWebPort = "8080"
+)
+
+// WebEnabled reports whether the embedded web UI should start. It starts when
+// either WebAddr or WebPort is set.
+func (c *Config) WebEnabled() bool {
+	return c.WebAddr != "" || c.WebPort != ""
+}
+
+// WebBindAddr returns the "host:port" the web server should listen on, applying
+// defaults for whichever of WebAddr/WebPort was omitted. Callers should only use
+// it when WebEnabled() is true. A missing address defaults to loopback, which
+// keeps the secure default for a port-only configuration.
+func (c *Config) WebBindAddr() string {
+	addr := c.WebAddr
+	if addr == "" {
+		addr = defaultWebAddr
+	}
+	port := c.WebPort
+	if port == "" {
+		port = defaultWebPort
+	}
+	return net.JoinHostPort(addr, port)
 }
 
 func Load() *Config {
@@ -64,6 +98,7 @@ func LoadFrom(yamlPath string) *Config {
 		CheckInCron:      envOr("CHECK_IN_CRON", "0 9 * * *"),
 		MaxContextTokens: envInt("MAX_CONTEXT_TOKENS", 180000),
 		LLMAuthToken:     os.Getenv("ANTHROPIC_AUTH_TOKEN"),
+		WebAddr:          os.Getenv("WEB_ADDR"),
 		WebPort:          os.Getenv("WEB_PORT"),
 	}
 

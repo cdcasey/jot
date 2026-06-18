@@ -47,7 +47,8 @@
       "Bash(rm -f /tmp/jot_smoke.db /tmp/jot_smoke.db-wal /tmp/jot_smoke.db-shm /tmp/jot_agent /tmp/jot_web*.log)",
       "Bash(lsof -iTCP:18080 -sTCP:LISTEN)",
       "Bash(openspec spec *)",
-      "Bash(git mv *)"
+      "Bash(git mv *)",
+      "Bash(lsof -nP -iTCP -sTCP:LISTEN)"
     ]
   },
   "outputStyle": "Explanatory"

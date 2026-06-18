@@ -71,7 +71,7 @@ Jot ships with an embedded web interface — a kanban board for your things and 
 calendar grid for your habits. It's served from the same binary and reads/writes
 the same `data.db`; there's no separate service, no Node, and no build step.
 
-Set `WEB_PORT` and run as usual:
+Set `WEB_PORT` (and optionally `WEB_ADDR`) and run as usual:
 
 ```bash
 # .env
@@ -83,8 +83,9 @@ WEB_PORT=8080
 # web UI listening on http://127.0.0.1:8080
 ```
 
-The web server starts alongside the CLI or Discord bot whenever `WEB_PORT` is
-set, and is skipped entirely when it isn't. Open the URL in a browser:
+The web server starts alongside the CLI or Discord bot whenever **`WEB_ADDR` or
+`WEB_PORT`** is set, and is skipped entirely when neither is. Open the URL in a
+browser:
 
 - **Board** (`/`) — a three-column kanban over your things: **Ideas** (`open`),
   **Active** (`active`), and **Done** (`done`). Archived (`dropped`) things are
@@ -98,16 +99,30 @@ set, and is skipped entirely when it isn't. Open the URL in a browser:
 
 #### Exposure
 
-`WEB_PORT` accepts either form:
+The bind address is split across two variables. `WEB_ADDR` is the host to bind;
+`WEB_PORT` is the port. Each has a default, so you can set just one:
 
-| Value | Binds to | Use for |
-|-------|----------|---------|
-| `8080` (bare port) | `127.0.0.1:8080` (loopback only) | local access |
-| `100.x.y.z:8080` (host:port) | that interface | remote access (e.g. Tailscale) |
+| `WEB_ADDR` | `WEB_PORT` | Binds to | Use for |
+|------------|-----------|----------|---------|
+| _(unset)_ | `8080` | `127.0.0.1:8080` (loopback only) | local access |
+| _(unset)_ | _(unset)_ | server off | — |
+| `100.x.y.z` | _(unset)_ | `100.x.y.z:8080` | remote access (e.g. Tailscale) |
+| `100.x.y.z` | `9090` | `100.x.y.z:9090` | remote, custom port |
 
-There is **no application-level login** — access control is delegated to the
-network layer. Bind to loopback or a Tailscale interface and rely on Tailscale
-ACLs; do not bind to a public interface without putting protection in front of it.
+To reach it over **Tailscale**, set `WEB_ADDR` to the node's tailnet IP (find it
+with `tailscale ip -4`):
+
+```bash
+# .env
+WEB_ADDR=100.x.y.z
+WEB_PORT=8080
+```
+
+A bare `WEB_PORT` binds **loopback only** (`127.0.0.1`), so it works on the host
+but not over the tailnet — set `WEB_ADDR` for that. There is **no
+application-level login**; access control is delegated to the network layer. Bind
+to loopback or a Tailscale interface and rely on Tailscale ACLs; do not bind to a
+public interface (e.g. `WEB_ADDR=0.0.0.0`) without putting protection in front of it.
 
 ## What it can do
 

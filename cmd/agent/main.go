@@ -62,22 +62,20 @@ func main() {
 }
 
 // startWebServer launches the embedded web UI in a background goroutine when
-// WEB_PORT is set. WEB_PORT may be a bare port ("8080" -> binds loopback only)
-// or a full host:port ("100.x.y.z:8080") to expose over a tailnet interface.
-// There is no application-level auth; access control is delegated to the network
-// layer (e.g. Tailscale ACLs).
+// WEB_ADDR or WEB_PORT is set. WEB_ADDR is the bind host (e.g. a Tailscale IP);
+// WEB_PORT is the port. An omitted address defaults to loopback (127.0.0.1) and
+// an omitted port defaults to 8080. There is no application-level auth; access
+// control is delegated to the network layer (e.g. Tailscale ACLs), so binding to
+// a tailnet interface restricts reach to your tailnet.
 func startWebServer(cfg *config.Config, database *db.DB) {
-	if cfg.WebPort == "" {
+	if !cfg.WebEnabled() {
 		return
 	}
 	srv, err := web.New(database)
 	if err != nil {
 		log.Fatalf("failed to init web server: %v", err)
 	}
-	addr := cfg.WebPort
-	if !strings.Contains(addr, ":") {
-		addr = "127.0.0.1:" + addr // bare port binds loopback only
-	}
+	addr := cfg.WebBindAddr()
 	go func() {
 		log.Printf("web UI listening on http://%s", addr)
 		if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
