@@ -60,6 +60,10 @@ Discord Bot <-> Agent Core <-> SQLite (data.db)
 /internal/watch/
     fetch.go                 # URL fetching + HTML-to-text extraction
     runner.go                # Watch execution: fetch → LLM extract → dedup → store
+/internal/web/
+    web.go                   # Embedded web UI: Server, routes, view models (kanban + habit grid)
+    templates/               # html/template files (layout, board, habits)
+    static/                  # Vendored htmx + Sortable.js + app.css (embed.FS, no npm/build step)
 /config.example.yaml             # YAML config template (checked in)
 /config/
     config.go                # YAML + env config loading
@@ -82,7 +86,8 @@ CREATE TABLE things (
     due_date TEXT,
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now')),
-    completed_at TEXT
+    completed_at TEXT,
+    position INTEGER NOT NULL DEFAULT 0 -- manual sort order within a status column (kanban)
 );
 
 CREATE TABLE notes (                  -- Internal config only (timezone, discord_user_id). Not exposed as LLM tools.
@@ -221,6 +226,9 @@ DISCORD_USER_ID=...
 DATABASE_PATH=./data.db        # SQLite file location
 CHECK_IN_CRON="0 9 * * *"      # Daily at 9am (optional)
 MAX_CONTEXT_TOKENS=180000      # Token budget for LLM context (default: 180000)
+WEB_PORT=8080                  # Optional: enable embedded web UI. Bare port binds
+                               #   loopback only; "host:port" exposes that interface
+                               #   (e.g. Tailscale). No app-level auth — use network ACLs.
 
 # Eval-specific (optional, fall back to active_model from YAML)
 LLM_EVAL_PROVIDER=anthropic
@@ -324,6 +332,16 @@ This layer was built and later stripped (see Phase 7). Listed here for history:
 - [x] Age-based pruning of watch results (180 days, runs daily via scheduler)
 - [x] Context propagation (context.Context through fetch pipeline)
 - [x] Eval cases for watch creation and result querying
+
+### Phase 8: Web UI (openspec: add-web-kanban-habit-grid)
+Web-primary interface in the single binary — no Node, no SPA, no build step.
+- [x] `internal/web` package served behind `WEB_PORT` (off when unset), shares the SQLite handle
+- [x] Three-column kanban over `things` (open=Ideas, active=Active, done=Done; dropped off-board)
+- [x] `things.position` column (+ idempotent migrate/backfill) for manual ordering
+- [x] Drag-and-drop via htmx + Sortable.js (vendored, embed.FS); fractional positions with renumber fallback
+- [x] Cross-column move writes status+position+updated_at; stamps/clears completed_at for Done
+- [x] Read-only per-habit calendar grid over `habit_logs` (rolling 30-day window)
+- [x] Loopback/Tailscale exposure, no app-level auth (network ACLs)
 
 ### Phase 7: Strip Memory Layer (openspec: strip-memory-layer)
 Reorienting Jot toward a web-primary, structured tool. The agent becomes a thin,

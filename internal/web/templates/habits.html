@@ -1,0 +1,27 @@
+{{define "content"}}
+<div class="grid-wrap">
+  <h1>Habits</h1>
+  {{if .Rows}}
+  <table class="habit-grid">
+    <thead>
+      <tr>
+        <th class="habit-name"></th>
+        {{range .Dates}}<th class="date-col">{{.Label}}</th>{{end}}
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        <td class="habit-name">{{.Name}}</td>
+        {{range .Cells}}
+          <td class="cell{{if .Done}} done{{end}}" title="{{.Date}}"></td>
+        {{end}}
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="empty">No active habits yet.</p>
+  {{end}}
+</div>
+{{end}}

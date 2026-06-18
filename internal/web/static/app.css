@@ -1,0 +1,92 @@
+:root {
+  --bg: #1a1b1e;
+  --panel: #25262b;
+  --card: #2e2f34;
+  --text: #e6e6e6;
+  --muted: #9aa0a6;
+  --accent: #4dabf7;
+  --done: #51cf66;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.topnav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: var(--panel);
+  border-bottom: 1px solid #000;
+}
+.topnav a { color: var(--muted); text-decoration: none; }
+.topnav a:hover { color: var(--text); }
+.topnav .brand { font-weight: 700; color: var(--accent); margin-right: 0.5rem; }
+
+main { padding: 1.25rem; }
+
+/* Kanban */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.column {
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+.column h2 {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0 0 0.75rem;
+}
+.column h2 .count {
+  background: var(--card);
+  border-radius: 10px;
+  padding: 0 0.5rem;
+  font-size: 0.75rem;
+}
+.cards { min-height: 40px; display: flex; flex-direction: column; gap: 0.5rem; }
+.card {
+  background: var(--card);
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  cursor: grab;
+  border-left: 3px solid transparent;
+}
+.card:active { cursor: grabbing; }
+.card.overdue { border-left-color: #ff6b6b; }
+.card-title { font-size: 0.9rem; }
+.card-due { font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem; }
+.prio {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.prio-urgent, .prio-high { color: #ffa94d; }
+
+/* Habit grid */
+.habit-grid { border-collapse: collapse; }
+.habit-grid th, .habit-grid td { padding: 2px; text-align: center; }
+.habit-grid .habit-name { text-align: left; padding-right: 0.75rem; font-size: 0.85rem; }
+.habit-grid .date-col { font-size: 0.65rem; color: var(--muted); writing-mode: vertical-rl; }
+.cell {
+  width: 16px;
+  height: 16px;
+  background: var(--card);
+  border-radius: 3px;
+}
+.cell.done { background: var(--done); }
+.empty { color: var(--muted); }

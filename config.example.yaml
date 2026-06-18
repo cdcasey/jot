@@ -29,3 +29,8 @@ models:
     temperature: 0.7
 
 active_model: anthropic-sonnet
+
+# App settings (Discord tokens, DATABASE_PATH, WEB_PORT, etc.) live in .env,
+# not here. Set WEB_PORT to enable the embedded web UI — a bare port like
+# "8080" binds loopback only; "100.x.y.z:8080" exposes a specific (e.g.
+# Tailscale) interface. There is no app-level auth; use network ACLs.

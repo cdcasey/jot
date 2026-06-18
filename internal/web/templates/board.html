@@ -1,0 +1,52 @@
+{{define "content"}}
+<div class="board">
+  {{range .Columns}}
+  <section class="column" data-status="{{.Status}}">
+    <h2>{{.Label}} <span class="count">{{len .Things}}</span></h2>
+    <div class="cards" data-status="{{.Status}}">
+      {{range .Things}}
+        {{template "card" .}}
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+</div>
+
+<script>
+  // Wire each column's card list for drag-and-drop. On drop we POST the moved
+  // card id plus the ids of its new neighbors; the server resolves positions.
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".cards").forEach(function (list) {
+      new Sortable(list, {
+        group: "board",
+        animation: 120,
+        onEnd: function (evt) {
+          var card = evt.item;
+          var listEl = evt.to;
+          var prev = card.previousElementSibling;
+          var next = card.nextElementSibling;
+          var body = new URLSearchParams({
+            id: card.dataset.id,
+            status: listEl.dataset.status,
+            after_id: prev ? prev.dataset.id : "0",
+            before_id: next ? next.dataset.id : "0",
+          });
+          fetch("/things/move", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body.toString(),
+          });
+        },
+      });
+    });
+  });
+</script>
+{{end}}
+
+{{define "card"}}
+<div class="card{{if .Overdue}} overdue{{end}}" data-id="{{.ID}}">
+  <div class="card-title">{{.Title}}</div>
+  {{if .DueDate}}<div class="card-due">due {{.DueDate}}</div>{{end}}
+  {{if .Priority}}<span class="prio prio-{{.Priority}}">{{.Priority}}</span>{{end}}
+</div>
+{{end}}

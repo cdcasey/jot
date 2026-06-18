@@ -67,6 +67,26 @@ func (d *DB) migrate() error {
 		}
 	}
 
+	// Add position to things if missing, then backfill deterministic, well-spaced
+	// positions per status column (kanban manual ordering).
+	if d.tableExists("things") && !d.columnExists("things", "position") {
+		if _, err := d.conn.Exec(`ALTER TABLE things ADD COLUMN position INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return fmt.Errorf("adding position to things: %w", err)
+		}
+		if _, err := d.conn.Exec(`
+			WITH ranked AS (
+				SELECT id, ROW_NUMBER() OVER (
+					PARTITION BY status ORDER BY updated_at, id
+				) AS rn
+				FROM things
+			)
+			UPDATE things
+			SET position = (SELECT rn FROM ranked WHERE ranked.id = things.id) * ` + positionStepStr,
+		); err != nil {
+			return fmt.Errorf("backfilling thing positions: %w", err)
+		}
+	}
+
 	// Drop memory triggers and FTS table before the base memories table.
 	for _, trigger := range []string{"memories_ai", "memories_ad", "memories_au"} {
 		if _, err := d.conn.Exec("DROP TRIGGER IF EXISTS " + trigger); err != nil {

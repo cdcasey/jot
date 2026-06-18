@@ -43,6 +43,7 @@ type Config struct {
 	DatabasePath     string
 	CheckInCron      string
 	MaxContextTokens int
+	WebPort          string // when set, the embedded web UI listens on this port
 }
 
 func Load() *Config {
@@ -63,6 +64,7 @@ func LoadFrom(yamlPath string) *Config {
 		CheckInCron:      envOr("CHECK_IN_CRON", "0 9 * * *"),
 		MaxContextTokens: envInt("MAX_CONTEXT_TOKENS", 180000),
 		LLMAuthToken:     os.Getenv("ANTHROPIC_AUTH_TOKEN"),
+		WebPort:          os.Getenv("WEB_PORT"),
 	}
 
 	yc, err := loadYAML(yamlPath)

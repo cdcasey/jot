@@ -6,12 +6,13 @@ to be web-primary — the web app becomes where the user looks at and organizes
 ideas/projects (a board) and habits (a grid), while Discord drops to capture +
 push notifications.
 
-This change is run 3 of 3. It depends on:
-- Proposal 1 (foundational web layer): the `internal/web` package, `WEB_PORT`
-  wiring into `cmd/agent/main.go`, base templates/static asset serving, and the
-  htmx + Sortable.js plumbing. This change builds the two MVP views on top of it.
-- Proposal 2 (`habit-tracking`, already merged): the `habits` / `habit_logs`
-  tables and `log_habit`. The grid reads those tables.
+This change owns the entire web foundation *and* the two MVP views. The
+foundation — the `internal/web` package, `WEB_PORT` wiring into
+`cmd/agent/main.go`, base template + static-asset serving (htmx + Sortable.js
+vendored, embedded via `embed.FS`) — is built here, not assumed from any earlier
+change. The only real upstream is the already-merged `habit-tracking` change
+(`habits` / `habit_logs` tables and `log_habit`), which the read-only grid reads
+from.
 
 Constraints: no Node, no SPA, no build step in the MVP; SQLite-only sandbox
 identity preserved; pure-Go driver retained so future containerization stays
@@ -85,7 +86,7 @@ with how `complete_thing` already behaves (it stamps `completed_at`).
 - **Float precision / gap collapse in fractional positions** → Renumber-column fallback (shared with backfill) bounds the worst case; spec has a scenario for it.
 - **Read-only grid feels inert** → Acceptable for MVP given the "look, don't log here" framing; toggle is a small, well-isolated follow-up.
 - **No app auth** → Mitigated by binding to loopback/tailnet only; spec forbids unprotected public binding. If exposure changes, app-auth becomes a required follow-up.
-- **htmx + Sortable.js as vendored assets** → Pin versions and vendor them as static files so there is still no npm/build step; depends on proposal 1 having set up static serving.
+- **htmx + Sortable.js as vendored assets** → Pin versions and vendor them as static files embedded via `embed.FS` so there is still no npm/front-end build step.
 - **Two processes (web + scheduler) writing the same SQLite file** → SQLite single-writer; keep web writes short (single-row position/status updates) and reuse the existing DB connection handling to avoid `database is locked`.
 
 ## Migration Plan
