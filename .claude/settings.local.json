@@ -33,7 +33,8 @@
       "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('schema:', d['schemaName']\\); print\\('mode:', d['actionContext']['mode']\\); print\\('editRoots:', d['actionContext']['allowedEditRoots']\\)\")",
       "Bash(python3 *)",
       "Bash(echo \"vet-exit:$?\")",
-      "Bash(perl -0pi -e 's/- \\\\[ \\\\] \\(2\\\\.[1-6]|3\\\\.[1-4]|4\\\\.[1-3]|5\\\\.[12]\\)/- [x] $1/g' openspec/changes/add-habit-tracking/tasks.md)"
+      "Bash(perl -0pi -e 's/- \\\\[ \\\\] \\(2\\\\.[1-6]|3\\\\.[1-4]|4\\\\.[1-3]|5\\\\.[12]\\)/- [x] $1/g' openspec/changes/add-habit-tracking/tasks.md)",
+      "Bash(openspec --version)"
     ]
   },
   "outputStyle": "Explanatory"
