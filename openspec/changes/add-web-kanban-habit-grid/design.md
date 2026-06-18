@@ -37,7 +37,7 @@ simple (Ollama stays on the Mac Mini host, reachable via `host.docker.internal`)
 
 Use the stdlib `html/template`. Rationale: lowest friction, zero new
 dependencies, and — critically — **no codegen step**, which preserves the
-"no build step" identity. `templ` offers type-safe components but requires a
+"no separate ui build step" identity. `templ` offers type-safe components but requires a
 `templ generate` step and a new toolchain dependency; the MVP's two views don't
 justify that. Revisit if the template surface grows large or starts duplicating
 logic that types would catch.
