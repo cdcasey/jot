@@ -45,7 +45,9 @@
       "Bash(curl -s -o /dev/null -w 'reorder HTTP: %{http_code}\\\\n' -X POST http://127.0.0.1:18080/things/move --data 'id=__TRACKED_VAR__&status=open&after_id=__TRACKED_VAR__&before_id=__TRACKED_VAR__')",
       "Bash(pkill -f jot_agent)",
       "Bash(rm -f /tmp/jot_smoke.db /tmp/jot_smoke.db-wal /tmp/jot_smoke.db-shm /tmp/jot_agent /tmp/jot_web*.log)",
-      "Bash(lsof -iTCP:18080 -sTCP:LISTEN)"
+      "Bash(lsof -iTCP:18080 -sTCP:LISTEN)",
+      "Bash(openspec spec *)",
+      "Bash(git mv *)"
     ]
   },
   "outputStyle": "Explanatory"
